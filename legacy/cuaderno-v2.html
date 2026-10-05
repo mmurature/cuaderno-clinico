@@ -1,0 +1,156 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Cuaderno clínico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f8f7fc;--card:#fff;--ink:#2b2f45;--mut:#7a7f99;--line:#e9e6f3;--pri:#7c6fd6;--ok:#4cae82;--warn:#e0a458;--todo:#a6abc2;--sh:0 1px 2px rgba(60,50,110,.06),0 8px 22px rgba(60,50,110,.07);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15151f;--card:#1f1f2e;--ink:#ecebf5;--mut:#a3a3bd;--line:#2d2d42;--pri:#a79cf5;--sh:0 1px 3px rgba(0,0,0,.4)}}
+:root[data-theme="dark"]{--bg:#15151f;--card:#1f1f2e;--ink:#ecebf5;--mut:#a3a3bd;--line:#2d2d42;--pri:#a79cf5;--sh:0 1px 3px rgba(0,0,0,.4)}
+*{box-sizing:border-box}html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:15px/1.55 'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+h1,h3,.ti{font-family:Fraunces,Georgia,serif}button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:12px 0 8px}
+.w{max-width:960px;margin:auto;padding:0 16px}.hr{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h1{font-size:22px;margin:0}h1 span{color:var(--pri)}
+.gh{background:none;border:1px solid var(--line);border-radius:10px;padding:6px 12px;color:var(--mut);font-size:13px}
+.sr{width:100%;margin-top:10px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);outline:none}
+.sr:focus,.ti:focus,.f input:focus,.f select:focus,textarea:focus{border-color:var(--pri);box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 20%,transparent)}
+.tabs{display:flex;gap:4px;margin:10px 0 0;overflow-x:auto;scrollbar-width:none}
+.tabs button{flex:1;white-space:nowrap;border:0;background:none;padding:9px 12px;border-radius:10px;font-weight:600;color:var(--mut);font-size:14px}
+.tabs button.on{background:color-mix(in srgb,var(--pri) 16%,var(--card));color:var(--pri)}
+main{padding:14px 0 100px}#prog{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--mut);margin-bottom:12px}#prog b{color:var(--ink)}
+.bar{flex:1;height:8px;background:var(--line);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,#a99cf0,var(--ok));border-radius:9px}
+.bn{display:flex;align-items:center;justify-content:space-between;gap:10px;background:color-mix(in srgb,var(--warn) 22%,var(--card));border-radius:14px;padding:10px 14px;margin-bottom:12px;font-weight:500}
+.bt{background:var(--pri);color:#fff;border:0;border-radius:10px;padding:8px 16px;font-weight:600}.bt:disabled{opacity:.4}
+details.g{--c:hsl(var(--h) 60% 70%);margin-bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);overflow:hidden}
+details.g>summary{display:flex;align-items:center;gap:10px;padding:13px 14px;background:color-mix(in srgb,var(--c) 24%,var(--card));font-weight:600;font-family:Fraunces,Georgia,serif;font-size:17px}
+summary{cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}
+details.g>summary::before,details.sg>summary::before{content:'▸';transition:transform .2s;color:var(--mut);font-size:13px}details[open]>summary::before{transform:rotate(90deg)}
+.gt{flex:1}.gc{font:500 12px 'Plus Jakarta Sans',sans-serif;color:var(--mut)}.mb{width:50px;height:6px;background:color-mix(in srgb,var(--c) 30%,transparent);border-radius:6px;overflow:hidden}.mb i{display:block;height:100%;background:var(--ok)}
+details.sg{border-top:1px solid var(--line)}details.sg>summary{display:flex;gap:8px;align-items:center;padding:10px 16px;font-weight:600;font-size:14px}details.sg em{font-style:normal;font-size:12px;color:var(--mut);background:var(--bg);padding:1px 8px;border-radius:10px}
+.cards{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));padding:4px 14px 14px}
+.card{background:var(--bg);border:1px solid var(--line);border-left:5px solid hsl(var(--h) 60% 70%);border-radius:12px;padding:11px 12px;cursor:pointer}.card:hover{border-color:var(--pri)}
+.card h3{margin:6px 0 4px;font-size:16px;line-height:1.3}.top{display:flex;justify-content:space-between;gap:6px;align-items:center;flex-wrap:wrap}
+.tag{color:color-mix(in srgb,hsl(var(--h) 60% 60%) 50%,var(--ink));background:color-mix(in srgb,hsl(var(--h) 60% 70%) 25%,transparent);font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px}
+.st{font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px}.s0{color:var(--todo);background:color-mix(in srgb,var(--todo) 18%,transparent)}.s1{color:#b7791f;background:color-mix(in srgb,var(--warn) 22%,transparent)}.s2{color:#2f8a5f;background:color-mix(in srgb,var(--ok) 20%,transparent)}
+.meta{font-size:12.5px;color:var(--mut)}.due{color:#c2603a;font-weight:600}
+.fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--pri);color:#fff;border:0;border-radius:28px;padding:14px 22px;font-weight:600;box-shadow:0 8px 24px color-mix(in srgb,var(--pri) 40%,transparent)}
+.ov{position:fixed;inset:0;background:rgba(20,18,40,.5);overflow:auto;z-index:20}
+.sheet{background:var(--card);max-width:760px;margin:0 auto;min-height:100%;padding:16px 18px 60px;border-top:6px solid hsl(var(--h,250) 60% 72%)}
+@media(min-width:800px){.sheet{margin:28px auto;min-height:0;border-radius:18px}}
+.eh{display:flex;justify-content:space-between;margin-bottom:8px}.eh button{background:none;border:0;color:var(--mut);padding:6px 0}.eh .del{color:#d9534f}
+.ti{width:100%;border:1px solid transparent;border-radius:10px;font-size:25px;font-weight:700;padding:6px 8px;margin-left:-8px;background:none;outline:none}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}.f{flex:1;min-width:150px;font-size:12px;color:var(--mut);font-weight:600}
+.f input,.f select{display:block;width:100%;margin-top:4px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);outline:none;font-weight:400;font-size:15px}
+.seg{display:flex;gap:6px;margin:6px 0}.seg button{flex:1;border:1px solid var(--line);background:none;border-radius:10px;padding:8px;font-size:13px;font-weight:600;color:var(--mut)}.seg button.on{border-color:currentColor}
+section{margin-top:16px}h4{margin:0 0 6px;font-size:12.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--pri)}
+textarea{width:100%;min-height:78px;resize:none;overflow:hidden;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);outline:none;line-height:1.55}
+.li{display:flex;gap:8px;align-items:center;margin-bottom:6px}.li input[type=checkbox]{width:20px;height:20px;accent-color:var(--ok);flex:none}
+.li input[type=text]{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);outline:none}
+.pi{border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;background:var(--bg)}.pi input{width:100%;font-weight:600;border:0;background:none;outline:none;padding:4px 6px}.pi textarea{min-height:52px;background:var(--card)}
+.x{background:none;border:0;color:var(--mut);font-size:18px}.add,.chip{background:none;border:1px dashed var(--line);border-radius:20px;padding:6px 14px;color:var(--pri);font-weight:600;font-size:13px;margin:0 6px 6px 0}.chip{border-style:solid;background:var(--bg)}
+.pan{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--sh)}.pan h3{margin:0 0 8px;font-size:17px}
+.kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px}.kp div{background:color-mix(in srgb,var(--pri) 10%,var(--card));border-radius:14px;padding:12px}.kp b{display:block;font:700 24px Fraunces,Georgia,serif}
+.br{display:grid;grid-template-columns:minmax(80px,38%) 1fr 44px;gap:8px;align-items:center;font-size:13px;margin:5px 0}.br b{text-align:right}
+.op{display:block;width:100%;text-align:left;margin:8px 0;padding:12px 14px;border:1px solid var(--line);background:var(--bg);border-radius:12px}.op.ok{background:color-mix(in srgb,var(--ok) 25%,var(--card));border-color:var(--ok)}.op.no{background:color-mix(in srgb,#e46a6a 22%,var(--card))}
+.qq{white-space:pre-wrap;font-size:18px;line-height:1.4;margin:10px 0}.fb{margin:10px 0;font-size:14px}
+.tl{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}.tl .f{min-width:110px}
+.bk textarea,#qa{min-height:120px;font-size:12px;font-family:ui-monospace,monospace;overflow:auto}
+</style></head><body>
+<header><div class="w"><div class="hr"><h1>Cuaderno <span>clínico</span></h1><button class="gh" id="bkb">Respaldo</button></div><input class="sr" id="q" type="search" placeholder="Buscar patología, procedimiento o texto…"><div class="tabs" id="tabs"><button data-t="p">Patologías</button><button data-t="q">Procedimientos</button><button data-t="r">Repaso</button><button data-t="s">Estadísticas</button></div></div></header>
+<div class="w"><main><div id="bn"></div><div id="prog"></div><div id="list"></div></main></div>
+<button class="fab" id="new">+ Nueva ficha</button><div class="ov" id="ed" hidden></div><div class="ov" id="bk" hidden></div>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ST=['Por ver','En estudio','Dominada'],IV=[1,3,14],shuf=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
+const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const addD=(d,n)=>{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+const PF=[['def','Definición'],['eti','Etiología'],['epi','Epidemiología'],['fis','Fisiopatología'],['cli','Cuadro clínico'],['dx','Diagnóstico'],['ddx','Diagnósticos diferenciales'],['tx','Tratamiento'],['pro','Pronóstico'],['per','Perlas'],['src','Fuente y fecha de revisión']];
+const QF=[['pre','Prequirúrgico'],['pos','Posicionamiento del paciente'],['qx','Preparación del quirófano'],['_c','Checklist de requisitos'],['_p','Preferencias por médico de planta'],['pas','Paso a paso'],['com','Complicaciones y su resolución'],['seg','Seguimiento posoperatorio'],['src','Fuente y fecha de revisión']];
+const TX={tum:[['est','Clasificación y estadificación'],['his','Histología y marcadores']],vas:[['esc','Escalas y clasificaciones'],['img','Estudios de imagen clave']],tra:[['esc','Escalas de gravedad'],['man','Manejo inicial']]},TN={gen:'General',tum:'Tumoral',vas:'Vascular',tra:'Traumática'};
+const FL={def:'definición',eti:'etiología',epi:'epidemiología',fis:'fisiopatología',cli:'cuadro clínico',dx:'diagnóstico',tx:'tratamiento',pre:'prequirúrgico',pas:'paso a paso',com:'complicaciones'};
+const fieldsOf=it=>{if(it.k=='q')return QF;const F=[...PF];F.splice(7,0,...(TX[it.ty]||[]));return F};
+const mk=(k,t,g='',s='',e='',ty='gen')=>({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),k,t,g,s,e,ty,st:0,nx:'',f:{},c:[],pr:[],l:[]});
+const hue=g=>{let h=0;for(const c of g||'x')h=(h*31+c.charCodeAt(0))%360;return h};
+const SN='Sistema nervioso',SD='Sistema digestivo';
+function seed(){return{items:[mk('p','Hemorragia subaracnoidea aneurismática',SN,'Vascular','','vas'),mk('p','ACV isquémico',SN,'Vascular','','vas'),mk('p','Traumatismo craneoencefálico',SN,'Trauma','','tra'),mk('p','Hidrocefalia',SN,'LCR e hidrocefalia'),mk('p','Glioblastoma',SN,'Tumores','','tum'),mk('p','Hernia de disco lumbar',SN,'Columna'),mk('p','Colecistitis aguda',SD,'Páncreas y vía biliar'),mk('p','Apendicitis aguda',SD,'Intestino'),mk('q','Craneotomía',SN,'Craneal','Neurocirugía'),mk('q','Derivación ventricular externa',SN,'LCR e hidrocefalia','Neurocirugía'),mk('q','Laminectomía lumbar',SN,'Columna','Neurocirugía · Columna'),mk('q','Colecistectomía',SD,'Páncreas y vía biliar','Cirugía general'),mk('q','Apendicectomía',SD,'Intestino','Cirugía general')],qb:[{c:'Anatomía',q:'¿Qué nervio craneal inerva el músculo recto lateral del ojo?',o:['III','IV','VI','VII'],a:2,s:'Ejemplo (reemplazalo con tu bibliografía)'},{c:'Fisiología',q:'¿Cuál es el principal neurotransmisor inhibitorio del SNC del adulto?',o:['Glutamato','GABA','Dopamina','Acetilcolina'],a:1,s:'Ejemplo'},{c:'Histología',q:'¿Qué células forman la mielina en el sistema nervioso central?',o:['Células de Schwann','Astrocitos','Oligodendrocitos','Microglía'],a:2,s:'Ejemplo'}]}}
+const def=o=>Object.assign({items:[],lg:[],qb:[],rv:{},cs:{},hist:{}},o,{cfg:Object.assign({t:'20:00',n:5},o&&o.cfg)});
+const KEY='cuaderno-v2';let mem=null;
+function load(){try{let r=localStorage.getItem(KEY);if(r)return def(JSON.parse(r));const o=localStorage.getItem('cuaderno-v1');if(o){const j=JSON.parse(o);j.items.forEach(i=>{if(i.k=='q'&&i.e==null){i.e=i.g;i.g=''}});return def(j)}}catch(e){}return mem||def(seed())}
+const save=()=>{mem=S;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+let S=load(),tab='p',qs='',cur=null,delArm=false,sess=null;const op=new Set(),find=id=>S.items.find(x=>x.id==id);
+const bars=(o,fmt=v=>v,mx)=>{const m=mx||Math.max(1,...Object.values(o));return Object.entries(o).map(([k,v])=>`<div class="br"><span>${esc(k)}</span><div class="bar"><i style="width:${v/m*100}%"></i></div><b>${fmt(v)}</b></div>`).join('')||'<p class="meta">Sin datos todavía.</p>'};
+const cnt=(a,f)=>a.reduce((m,x)=>{const k=f(x);m[k]=(m[k]||0)+1;return m},{});
+function streak(){let d=today(),n=0;if(!S.hist[d])d=addD(d,-1);while(S.hist[d]){n++;d=addD(d,-1)}return n}
+function qpool(){const out=S.qb.map((x,i)=>({key:'b'+i,c:x.c||'General',q:x.q,o:x.o,a:x.a,s:x.s,e:x.e}));
+ ['p','q'].forEach(k=>{const A=S.items.filter(i=>i.k==k&&i.t.trim());if(A.length<4)return;A.forEach(i=>Object.keys(FL).forEach(f=>{const v=(i.f[f]||'').trim();if(v.length<25)return;const o=shuf([i,...shuf(A.filter(x=>x!=i)).slice(0,3)]);out.push({key:`a:${i.id}:${f}`,c:i.g||'Fichas',q:`¿A qué ${k=='p'?'patología':'procedimiento'} corresponde este texto de «${FL[f]}»?\n“${v.slice(0,300)}”`,o:o.map(x=>x.t),a:o.indexOf(i),s:'Tu ficha: '+i.t})}))});return out}
+const dueFichas=()=>S.items.filter(i=>i.nx&&i.nx<=today());
+function banner(){const t=today(),hh=new Date().toTimeString().slice(0,5),dn=S.hist[t];$('#bn').innerHTML=!dn&&hh>=S.cfg.t&&tab!='r'&&!sess?`<div class="bn"><span>Es hora de tu repaso diario (${S.cfg.t})</span><button class="bt" data-go="r">Empezar</button></div>`:''}
+function card(i){const F=fieldsOf(i).filter(([k])=>k[0]!='_'),n=F.filter(([k])=>(i.f[k]||'').trim()).length,du=i.nx&&i.nx<=today();
+ return`<article class="card" style="--h:${hue(i.g)}" data-id="${i.id}"><div class="top"><span class="tag">${esc(i.k=='q'?(i.e||'Sin especialidad'):TN[i.ty||'gen'])}</span><span class="st s${i.st}">${ST[i.st]}</span></div><h3>${esc(i.t||'Sin título')}</h3><div class="meta">${n}/${F.length} apartados${i.l.length?' · '+i.l.length+' vínculos':''}${du?' · <span class="due">Repasar hoy</span>':''}</div></article>`}
+function tree(its){const m={},ql=qs.toLowerCase();its.forEach(i=>{if(ql&&!(i.t+i.g+i.s+i.e+Object.values(i.f).join(' ')).toLowerCase().includes(ql))return;const g=i.g||'Sin sistema',s=i.s||'General';((m[g]??={})[s]??=[]).push(i)});
+ const ks=Object.keys(m).sort();if(!ks.length)return'<p class="meta" style="text-align:center;padding:40px 0">No hay fichas. Tocá “+ Nueva ficha”.</p>';
+ return ks.map(g=>{const all=Object.values(m[g]).flat(),d=all.filter(i=>i.st==2).length,k=tab+g;
+ return`<details class="g" style="--h:${hue(g)}" data-k="${esc(k)}" ${op.has(k)||qs?'open':''}><summary><span class="gt">${esc(g)}</span><span class="gc">${d}/${all.length}</span><span class="mb"><i style="width:${d/all.length*100}%"></i></span></summary>${Object.keys(m[g]).sort().map(s=>{const k2=k+'|'+s;return`<details class="sg" data-k="${esc(k2)}" ${op.has(k2)||qs?'open':''}><summary>${esc(s)} <em>${m[g][s].length}</em></summary><div class="cards">${m[g][s].sort((a,b)=>a.t.localeCompare(b.t)).map(card).join('')}</div></details>`}).join('')}</details>`}).join('')}
+function repHome(){const t=today(),P=qpool(),dn=S.hist[t],du=dueFichas();
+ return`<div class="pan"><h3>Repaso diario</h3><p class="meta">${dn?`Hoy completaste ${dn.ok}/${dn.n} · `:'Hoy: pendiente · '}Racha: ${streak()} día(s) · ${P.length} preguntas disponibles (${S.qb.length} del banco, ${P.length-S.qb.length} de tus fichas)</p><div class="tl"><label class="f">Hora<input type="time" data-cfg="t" value="${S.cfg.t}"></label><label class="f">Preguntas por día<select data-cfg="n">${[3,5,8,10].map(n=>`<option ${S.cfg.n==n?'selected':''}>${n}</option>`).join('')}</select></label><button class="bt" data-r="start" ${P.length?'':'disabled'}>Empezar repaso</button></div><p class="meta" style="margin-top:10px">Avisos: <button class="add" data-r="notif">${S.cfg.nt?'Activados mientras la app esté abierta':'Activar avisos'}</button> Para una alarma segura poné también una alarma diaria en tu celular a esa hora.</p></div>
+<div class="pan"><h3>Fichas para repasar hoy (${du.length})</h3>${du.map(i=>`<button class="chip" data-r="gof" data-i="${i.id}">${esc(i.t)}</button>`).join('')||'<p class="meta">Ninguna. Asignales una fecha de repaso dentro de cada ficha.</p>'}</div>
+<div class="pan"><h3>Banco de preguntas (${S.qb.length})</h3><p class="meta">Pegá preguntas en JSON: <code>[{"c":"Anatomía","q":"…","o":["A","B","C","D"],"a":0,"e":"explicación","s":"fuente"}]</code>. Pasame tu bibliografía y te las armo.</p><textarea id="qa" placeholder="Pegá el JSON acá"></textarea><button class="add" data-r="addq">Agregar al banco</button><span class="meta" id="qm"></span></div>`}
+function repQ(){const q=sess.qs[sess.i],a=sess.ans;return`<div class="pan"><div class="meta">Pregunta ${sess.i+1} de ${sess.qs.length} · <span class="tag" style="--h:${hue(q.c)}">${esc(q.c)}</span></div><h3 class="qq">${esc(q.q)}</h3>${q.o.map((t,j)=>`<button class="op${a!=null?(j==q.a?' ok':j==a?' no':''):''}" data-r="ans" data-j="${j}" ${a!=null?'disabled':''}>${esc(t)}</button>`).join('')}${a!=null?`<div class="fb"><b>${a==q.a?'Correcto':'Incorrecto'}</b>${q.e?'. '+esc(q.e):''}<div class="meta">${esc(q.s||'')}</div></div><button class="bt" data-r="next">${sess.i+1<sess.qs.length?'Siguiente':'Terminar'}</button>`:''}</div>`}
+function stats(){const P=S.items.filter(i=>i.k=='p'),Q=S.items.filter(i=>i.k=='q'),L=S.lg,dm=a=>a.filter(i=>i.st==2).length;
+ const sys=cnt(P,i=>i.g||'Sin sistema'),dom={};Object.keys(sys).forEach(g=>dom[g]=Math.round(P.filter(i=>(i.g||'Sin sistema')==g&&i.st==2).length/sys[g]*100));
+ const cat={};Object.entries(S.cs).forEach(([c,v])=>cat[c]=Math.round(v.ok/v.n*100));const cp=L.filter(x=>x.c=='Sí').length;
+ const mo=cnt(L,x=>x.d.slice(0,7)),tot=Object.values(S.hist).reduce((a,v)=>a+v.n,0),okk=Object.values(S.hist).reduce((a,v)=>a+v.ok,0);
+ return`<div class="kp"><div><b>${P.length}</b>patologías (${dm(P)} dominadas)</div><div><b>${Q.length}</b>fichas de procedimientos</div><div><b>${L.length}</b>procedimientos realizados</div><div><b>${streak()}</b>días de racha</div></div>
+<div class="pan"><h3>Estudio</h3><p class="meta">Dominio por sistema</p>${bars(dom,v=>v+'%',100)}<p class="meta" style="margin-top:10px">Estado de las fichas</p>${bars(cnt(S.items,i=>ST[i.st]))}<p class="meta" style="margin-top:10px">Precisión en repasos por categoría (${tot?Math.round(okk/tot*100)+'% global':'sin datos'})</p>${bars(cat,v=>v+'%',100)}</div>
+<div class="pan"><h3>Registro de procedimientos realizados</h3><p class="meta">Sin datos identificables del paciente: solo procedimiento, rol y resultado.</p><div class="tl"><label class="f">Fecha<input type="date" id="lf-d" value="${today()}"></label><label class="f">Procedimiento<input id="lf-p" list="ql"></label><datalist id="ql">${Q.map(i=>`<option value="${esc(i.t)}">`).join('')}</datalist><label class="f">Rol<select id="lf-r"><option>Cirujano</option><option>Ayudante</option><option>Observador</option></select></label><label class="f">Tipo<select id="lf-t"><option>Electivo</option><option>Urgencia</option></select></label><label class="f">Complicación<select id="lf-c"><option>No</option><option>Sí</option></select></label><button class="bt" data-r="addlog">Registrar</button></div></div>
+<div class="pan"><h3>Estadísticas quirúrgicas</h3><p class="meta">Complicaciones: ${L.length?Math.round(cp/L.length*100)+'% ('+cp+' de '+L.length+')':'sin datos'}</p><p class="meta">Por rol</p>${bars(cnt(L,x=>x.r))}<p class="meta" style="margin-top:10px">Electivo vs urgencia</p>${bars(cnt(L,x=>x.t))}<p class="meta" style="margin-top:10px">Procedimientos más frecuentes</p>${bars(Object.fromEntries(Object.entries(cnt(L,x=>x.p||'Sin nombre')).sort((a,b)=>b[1]-a[1]).slice(0,6)))}<p class="meta" style="margin-top:10px">Por mes</p>${bars(Object.fromEntries(Object.entries(mo).sort().slice(-6)))}<p class="meta" style="margin-top:10px">Últimos registros</p>${L.slice(-5).reverse().map(x=>`<div class="li"><span class="meta" style="flex:1">${x.d} · ${esc(x.p)} · ${x.r} · ${x.t}${x.c=='Sí'?' · complicación':''}</span><button class="x" data-r="dellog" data-i="${S.lg.indexOf(x)}">×</button></div>`).join('')}</div>`}
+function render(){document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));const pq=tab=='p'||tab=='q';$('#new').hidden=!pq;banner();
+ if(pq){const its=S.items.filter(i=>i.k==tab),d=its.filter(i=>i.st==2).length;$('#prog').innerHTML=`<div><b>${d}</b> de ${its.length} dominadas</div><div class="bar"><i style="width:${its.length?d/its.length*100:0}%"></i></div>`;$('#list').innerHTML=tree(its)}
+ else{$('#prog').innerHTML='';$('#list').innerHTML=tab=='r'?(sess?(sess.fin?`<div class="pan"><h3>Repaso terminado</h3><p>Acertaste ${sess.ok} de ${sess.qs.length}.</p><button class="bt" data-r="end">Volver</button></div>`:repQ()):repHome()):stats()}}
+function drawEd(){const it=cur,ed=$('#ed'),sc=ed.scrollTop,uniq=f=>[...new Set(S.items.map(f).filter(Boolean))];
+ const sec=fieldsOf(it).map(([k,l])=>{let b;
+  if(k=='_c')b=it.c.map((c,i)=>`<div class="li"><input type="checkbox" data-ci="${i}" ${c.d?'checked':''}><input type="text" data-ci="${i}" value="${esc(c.t)}" placeholder="Ítem a preparar"><button class="x" data-a="xc" data-i="${i}">×</button></div>`).join('')+`<button class="add" data-a="ac">+ Ítem</button>`;
+  else if(k=='_p')b=it.pr.map((p,i)=>`<div class="pi"><div class="li"><input data-pi="${i}" data-pk="m" value="${esc(p.m)}" placeholder="Nombre del médico"><button class="x" data-a="xp" data-i="${i}">×</button></div><textarea data-pi="${i}" data-pk="t" placeholder="Instrumental, suturas, posición…">${esc(p.t)}</textarea></div>`).join('')+`<button class="add" data-a="ap">+ Médico</button>`;
+  else b=`<textarea data-f="${k}" placeholder="Escribí acá…">${esc(it.f[k])}</textarea>`;return`<section><h4>${l}</h4>${b}</section>`}).join('');
+ const oth=S.items.filter(x=>x!=it&&!it.l.includes(x.id)).sort((a,b)=>a.t.localeCompare(b.t));
+ ed.innerHTML=`<div class="sheet" style="--h:${hue(it.g)}"><div class="eh"><button data-a="close">← Volver</button><button class="del" data-a="del">${delArm?'¿Seguro? Tocá otra vez':'Eliminar'}</button></div><input class="ti" data-k="t" value="${esc(it.t)}" placeholder="Nombre"><div class="row"><label class="f">Sistema<input data-k="g" list="l1" value="${esc(it.g)}"></label><label class="f">Subsistema<input data-k="s" list="l2" value="${esc(it.s)}"></label>${it.k=='q'?`<label class="f">Especialidad / subespecialidad<input data-k="e" list="l3" value="${esc(it.e)}"></label>`:`<label class="f">Tipo<select data-ty>${Object.entries(TN).map(([k,v])=>`<option value="${k}" ${it.ty==k?'selected':''}>${v}</option>`).join('')}</select></label>`}</div>
+ <datalist id="l1">${uniq(i=>i.g).map(g=>`<option value="${esc(g)}">`).join('')}</datalist><datalist id="l2">${uniq(i=>i.s).map(g=>`<option value="${esc(g)}">`).join('')}</datalist><datalist id="l3">${uniq(i=>i.e).map(g=>`<option value="${esc(g)}">`).join('')}</datalist>
+ <div class="seg">${ST.map((s,i)=>`<button data-a="st" data-v="${i}" class="s${i}${it.st==i?' on':''}">${s}</button>`).join('')}</div><div class="tl"><label class="f">Próximo repaso<input type="date" data-k="nx" value="${it.nx||''}"></label><button class="add" data-a="rep">Repasada hoy</button></div>${sec}
+ <section><h4>Fichas relacionadas</h4>${it.l.map(id=>find(id)).filter(Boolean).map(x=>`<button class="chip" data-a="go" data-i="${x.id}">${esc(x.t)}</button>`).join('')}<select data-add><option value="">+ Vincular ficha…</option>${oth.map(x=>`<option value="${x.id}">${x.k=='p'?'Patología':'Procedimiento'} · ${esc(x.t)}</option>`).join('')}</select></section></div>`;
+ ed.querySelectorAll('textarea').forEach(grow);ed.scrollTop=sc}
+const grow=t=>{t.style.height='auto';t.style.height=Math.max(t.scrollHeight+2,78)+'px'};
+function openEd(it){cur=it;delArm=false;$('#ed').hidden=false;document.body.style.overflow='hidden';drawEd()}
+function closeEd(){$('#ed').hidden=true;$('#bk').hidden=true;document.body.style.overflow='';cur=null;save();render()}
+$('#ed').oninput=e=>{const t=e.target,it=cur,d=t.dataset;if(!it)return;
+ if(d.f)it.f[d.f]=t.value;else if(d.k)it[d.k]=t.value;else if(d.ci!=null){t.type=='checkbox'?it.c[d.ci].d=t.checked:it.c[d.ci].t=t.value}else if(d.pi!=null)it.pr[d.pi][d.pk]=t.value;
+ if(t.tagName=='TEXTAREA')grow(t);save()};
+$('#ed').onchange=e=>{const t=e.target;if(t.hasAttribute('data-ty')){cur.ty=t.value;save();drawEd()}if(t.hasAttribute('data-add')&&t.value){const o=find(t.value);cur.l.push(o.id);o.l.includes(cur.id)||o.l.push(cur.id);save();drawEd()}};
+$('#ed').onclick=e=>{const b=e.target.closest('[data-a]');if(!b){if(e.target.id=='ed')closeEd();return}const a=b.dataset.a,it=cur,i=+b.dataset.i;
+ if(a=='close')return closeEd();if(a=='go'){save();cur=find(b.dataset.i);return drawEd()}
+ if(a=='del'){if(!delArm){delArm=true;drawEd();return}S.items.forEach(x=>x.l=x.l.filter(y=>y!=it.id));S.items=S.items.filter(x=>x!=it);return closeEd()}
+ if(a=='st')it.st=+b.dataset.v;if(a=='rep')it.nx=addD(today(),IV[it.st]);if(a=='ac')it.c.push({t:'',d:false});if(a=='xc')it.c.splice(i,1);if(a=='ap')it.pr.push({m:'',t:''});if(a=='xp')it.pr.splice(i,1);
+ save();drawEd()};
+document.addEventListener('keydown',e=>{if(e.key=='Escape'&&cur)closeEd()});
+const R={start(){const t=today(),P=qpool(),dueK=k=>S.rv[k]&&S.rv[k].n<=t,nw=k=>!S.rv[k];
+ sess={qs:[...shuf(P.filter(p=>dueK(p.key))),...shuf(P.filter(p=>nw(p.key))),...shuf(P.filter(p=>S.rv[p.key]&&!dueK(p.key)))].slice(0,S.cfg.n),i:0,ok:0,ans:null};render()},
+ ans(b){const q=sess.qs[sess.i],j=+b.dataset.j,ok=j==q.a,r=S.rv[q.key]||{b:0};r.b=ok?Math.min(r.b+1,4):0;r.n=addD(today(),ok?[1,2,4,8,16][r.b]:1);S.rv[q.key]=r;
+  const c=S.cs[q.c]||{ok:0,n:0};c.n++;ok&&c.ok++;S.cs[q.c]=c;sess.ans=j;ok&&sess.ok++;save();render()},
+ next(){if(sess.i+1<sess.qs.length){sess.i++;sess.ans=null}else{const h=S.hist[today()]||{ok:0,n:0};h.ok+=sess.ok;h.n+=sess.qs.length;S.hist[today()]=h;sess.fin=1;save()}render()},
+ end(){sess=null;render()},gof(b){openEd(find(b.dataset.i))},
+ notif(){try{Notification.requestPermission().then(p=>{S.cfg.nt=p=='granted';save();render()})}catch(e){}},
+ addq(){try{const a=JSON.parse($('#qa').value);if(!Array.isArray(a)||a.some(x=>!x.q||!Array.isArray(x.o)||x.o.length<2||x.a==null))throw 0;S.qb.push(...a);save();render();$('#qm').textContent=''}catch(e){$('#qm').textContent=' Formato inválido.'}},
+ addlog(){const g=i=>$('#lf-'+i).value;if(!g('p').trim())return;S.lg.push({d:g('d')||today(),p:g('p').trim(),r:g('r'),t:g('t'),c:g('c')});save();render()},
+ dellog(b){S.lg.splice(+b.dataset.i,1);save();render()}};
+$('#list').onclick=e=>{const c=e.target.closest('.card');if(c)return openEd(find(c.dataset.id));const g=e.target.closest('[data-go]');if(g){tab=g.dataset.go;return render()}const b=e.target.closest('[data-r]');if(b)R[b.dataset.r](b)};
+$('#bn').onclick=e=>{const g=e.target.closest('[data-go]');if(g){tab=g.dataset.go;render()}};
+$('#list').onchange=e=>{const c=e.target.dataset.cfg;if(c){S.cfg[c]=c=='n'?+e.target.value:e.target.value;save()}};
+$('#list').addEventListener('toggle',e=>{const k=e.target.dataset.k;if(k&&!qs)e.target.open?op.add(k):op.delete(k)},true);
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(b){tab=b.dataset.t;render()}};
+$('#q').oninput=e=>{qs=e.target.value;if(tab!='p'&&tab!='q')tab='p';render()};
+$('#new').onclick=()=>{const it=mk(tab,'');S.items.push(it);save();openEd(it);$('#ed .ti').focus()};
+$('#bkb').onclick=()=>{$('#bk').hidden=false;document.body.style.overflow='hidden';$('#bk').innerHTML=`<div class="sheet bk"><div class="eh"><button data-b="c">← Volver</button></div><h3>Respaldo</h3><p class="meta">Tus datos se guardan en este navegador. Copiá el texto y guardalo como copia de seguridad, o pegá uno acá para restaurarlo en otro dispositivo.</p><textarea id="bt">${esc(JSON.stringify(S))}</textarea><p id="bm" class="meta"></p><button class="add" data-b="cp">Copiar</button><button class="add" data-b="im">Restaurar desde el texto pegado</button></div>`};
+$('#bk').onclick=e=>{const b=e.target.dataset.b;if(!b)return;const t=$('#bt');if(b=='c')return closeEd();
+ if(b=='cp'){t.select();try{navigator.clipboard.writeText(t.value)}catch(x){document.execCommand('copy')}$('#bm').textContent='Copiado.'}
+ if(b=='im'){try{const o=JSON.parse(t.value);if(!Array.isArray(o.items))throw 0;S=def(o);save();render();$('#bm').textContent='Restaurado correctamente.'}catch(x){$('#bm').textContent='El texto no es un respaldo válido.'}}};
+setInterval(()=>{banner();const t=today();if(S.cfg.nt&&S.cfg.last!=t&&!S.hist[t]&&new Date().toTimeString().slice(0,5)>=S.cfg.t){S.cfg.last=t;save();try{new Notification('Repaso diario',{body:'Es hora de tu repaso de hoy.'})}catch(e){}}},30000);
+render();
+</script></body></html>

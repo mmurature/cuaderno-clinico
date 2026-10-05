@@ -1,0 +1,118 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Cuaderno clínico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--ink:#1d2433;--mut:#667085;--line:#e3e7ef;--pri:#4f46e5;--ok:#16a34a;--warn:#d97706;--todo:#8b95a7;--sh:0 1px 3px rgba(16,24,40,.08),0 8px 24px rgba(16,24,40,.05);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1320;--card:#181e30;--ink:#e8ebf3;--mut:#9aa5ba;--line:#2a3249;--pri:#8b85ff;--sh:0 1px 3px rgba(0,0,0,.4)}}
+:root[data-theme="dark"]{--bg:#0f1320;--card:#181e30;--ink:#e8ebf3;--mut:#9aa5ba;--line:#2a3249;--pri:#8b85ff;--sh:0 1px 3px rgba(0,0,0,.4)}
+*{box-sizing:border-box}html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:15px/1.55 'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+h1,h3,.ti{font-family:Fraunces,Georgia,serif}
+button,input,textarea{font:inherit;color:inherit}button{cursor:pointer}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:12px 0 10px}
+.w{max-width:1000px;margin:auto;padding:0 16px}
+.hr{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h1{font-size:22px;margin:0;letter-spacing:-.3px}h1 span{color:var(--pri)}
+.gh{background:none;border:1px solid var(--line);border-radius:10px;padding:6px 12px;color:var(--mut);font-size:13px}
+.sr{width:100%;margin-top:10px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);outline:none}
+.sr:focus,.ti:focus,.f input:focus,textarea:focus{border-color:var(--pri);box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 20%,transparent)}
+.tabs{display:flex;gap:6px;margin:14px 0 12px;background:color-mix(in srgb,var(--pri) 10%,transparent);padding:4px;border-radius:12px}
+.tabs button{flex:1;border:0;background:none;padding:9px;border-radius:9px;font-weight:600;color:var(--mut)}
+.tabs button.on{background:var(--card);color:var(--pri);box-shadow:var(--sh)}
+#prog{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--mut);margin-bottom:12px}#prog>div:first-child{white-space:nowrap}#prog b{color:var(--ink)}
+.bar{flex:1;height:8px;background:var(--line);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--pri),var(--ok));border-radius:9px;transition:width .4s}
+#chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chip{white-space:nowrap;border:1px solid var(--line);background:var(--card);border-radius:20px;padding:6px 14px;font-size:13px;color:var(--mut)}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+main{padding:16px 0 100px}
+#list{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.card{--c:hsl(var(--h) 65% 50%);background:var(--card);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:14px;padding:14px;box-shadow:var(--sh);cursor:pointer;transition:transform .15s}
+.card:hover{transform:translateY(-2px)}
+.card h3{margin:10px 0 6px;font-size:17px;line-height:1.3}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tag{--c:hsl(var(--h) 65% 50%);color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px}
+.st{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px}
+.s0{color:var(--todo);background:color-mix(in srgb,var(--todo) 15%,transparent)}.s1{color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent)}.s2{color:var(--ok);background:color-mix(in srgb,var(--ok) 15%,transparent)}
+.meta{font-size:12.5px;color:var(--mut)}
+.empty{grid-column:1/-1;text-align:center;color:var(--mut);padding:50px 0}
+.fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--pri);color:#fff;border:0;border-radius:28px;padding:14px 22px;font-weight:600;box-shadow:0 8px 24px color-mix(in srgb,var(--pri) 45%,transparent)}
+.ov{position:fixed;inset:0;background:rgba(10,14,25,.55);overflow:auto;z-index:20}
+.sheet{--c:hsl(var(--h,230) 65% 50%);background:var(--card);max-width:760px;margin:0 auto;min-height:100%;padding:16px 18px 60px;border-top:5px solid var(--c)}
+@media(min-width:800px){.sheet{margin:28px auto;min-height:0;border-radius:18px}}
+.eh{display:flex;justify-content:space-between;margin-bottom:10px}
+.eh button{background:none;border:0;color:var(--mut);padding:6px 0}.eh .del{color:#dc2626}
+.ti{width:100%;border:1px solid transparent;border-radius:10px;font-size:25px;font-weight:700;padding:6px 8px;margin-left:-8px;background:none;outline:none}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 14px}.f{flex:1;min-width:180px;font-size:12px;color:var(--mut);font-weight:600}
+.f input{display:block;width:100%;margin-top:4px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);outline:none;font-weight:400;font-size:15px}
+.seg{display:flex;gap:6px;margin-bottom:8px}.seg button{flex:1;border:1px solid var(--line);background:none;border-radius:10px;padding:8px;font-size:13px;font-weight:600;color:var(--mut)}
+.seg button.on.s0,.seg button.on.s1,.seg button.on.s2{border-color:currentColor}
+section{margin-top:18px}h4{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--c)}
+textarea{width:100%;min-height:78px;resize:none;overflow:hidden;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);outline:none;line-height:1.55}
+.li{display:flex;gap:8px;align-items:center;margin-bottom:6px}.li input[type=checkbox]{width:20px;height:20px;accent-color:var(--ok);flex:none}
+.li input[type=text]{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);outline:none}
+.pi{border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;background:var(--bg)}.pi input{width:100%;font-weight:600;border:0;background:none;outline:none;padding:4px 6px}.pi textarea{min-height:52px;background:var(--card)}
+.x{background:none;border:0;color:var(--mut);font-size:18px}.add{background:none;border:1px dashed var(--line);border-radius:10px;padding:7px 14px;color:var(--pri);font-weight:600;font-size:13px}
+.bk textarea{min-height:200px;font-size:12px;font-family:ui-monospace,monospace;overflow:auto}.bk p{color:var(--mut);font-size:13px}.bk .add{margin-right:6px}
+</style></head><body>
+<header><div class="w"><div class="hr"><h1>Cuaderno <span>clínico</span></h1><button class="gh" id="bkb">Respaldo</button></div><input class="sr" id="q" type="search" placeholder="Buscar patología, procedimiento o texto…"></div></header>
+<div class="w"><div class="tabs" id="tabs"><button data-t="p" class="on">Patologías</button><button data-t="q">Procedimientos</button></div><div id="prog"></div><div id="chips"></div>
+<main><div id="list"></div></main></div>
+<button class="fab" id="new">+ Nueva ficha</button>
+<div class="ov" id="ed" hidden></div><div class="ov" id="bk" hidden></div>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ST=['Por ver','En estudio','Dominada'];
+const PF=[['def','Definición'],['eti','Etiología'],['epi','Epidemiología'],['fis','Fisiopatología'],['cli','Cuadro clínico'],['dx','Diagnóstico'],['ddx','Diagnósticos diferenciales'],['tx','Tratamiento'],['pro','Pronóstico'],['per','Perlas'],['src','Fuente y fecha de revisión']];
+const QF=[['pre','Prequirúrgico'],['pos','Posicionamiento del paciente'],['qx','Preparación del quirófano'],['_c','Checklist de requisitos'],['_p','Preferencias por médico de planta'],['pas','Paso a paso'],['com','Complicaciones y su resolución'],['seg','Seguimiento posoperatorio'],['src','Fuente y fecha de revisión']];
+const mk=(k,t,g='',s='')=>({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),k,t,g,s,st:0,f:{},c:[],pr:[]});
+const hue=g=>{let h=0;for(const c of g||'x')h=(h*31+c.charCodeAt(0))%360;return h};
+const KEY='cuaderno-v1';let mem=null;
+function seed(){const N='Sistema nervioso';return{items:[...[['Hemorragia subaracnoidea aneurismática',N],['ACV isquémico',N],['Traumatismo craneoencefálico',N],['Hidrocefalia',N],['Glioblastoma',N],['Hernia de disco lumbar',N],['Apendicitis aguda','Sistema digestivo'],['Infarto agudo de miocardio','Sistema cardiovascular']].map(([t,g])=>mk('p',t,g)),...[['Craneotomía','Neurocirugía','Craneal'],['Derivación ventricular externa','Neurocirugía','Hidrocefalia'],['Laminectomía lumbar','Neurocirugía','Columna'],['Apendicectomía','Cirugía general','Abdomen']].map(([t,g,s])=>mk('q',t,g,s))]}}
+const load=()=>{try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return mem||seed()};
+const save=()=>{mem=S;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+let S=load(),tab='p',grp='',qs='',cur=null,delArm=false;
+function render(){
+ const its=S.items.filter(i=>i.k==tab),done=its.filter(i=>i.st==2).length,pct=its.length?Math.round(done/its.length*100):0;
+ $('#prog').innerHTML=`<div><b>${done}</b> de ${its.length} dominadas</div><div class="bar"><i style="width:${pct}%"></i></div><div>${pct}%</div>`;
+ const gs=[...new Set(its.map(i=>i.g).filter(Boolean))].sort();if(grp&&!gs.includes(grp))grp='';
+ $('#chips').innerHTML=['',...gs].map(g=>`<button class="chip${g==grp?' on':''}" data-g="${esc(g)}">${g?esc(g):'Todos'}</button>`).join('');
+ $('#tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
+ const ql=qs.toLowerCase(),F=tab=='p'?PF:QF;
+ const L=its.filter(i=>(!grp||i.g==grp)&&(!ql||(i.t+i.g+i.s+Object.values(i.f).join(' ')).toLowerCase().includes(ql))).sort((a,b)=>a.g.localeCompare(b.g)||a.t.localeCompare(b.t));
+ $('#list').innerHTML=L.length?L.map(i=>{const fl=F.filter(([k])=>k[0]!='_');const n=fl.filter(([k])=>(i.f[k]||'').trim()).length;
+  return`<article class="card" style="--h:${hue(i.g)}" data-id="${i.id}"><div class="top"><span class="tag">${esc(i.g||'Sin grupo')}</span><span class="st s${i.st}">${ST[i.st]}</span></div><h3>${esc(i.t||'Sin título')}</h3><div class="meta">${i.s?esc(i.s)+' · ':''}${n}/${fl.length} apartados completos</div></article>`}).join(''):'<div class="empty">No hay fichas. Tocá “+ Nueva ficha”.</div>'}
+function drawEd(){const it=cur,ed=$('#ed'),sc=ed.scrollTop,F=it.k=='p'?PF:QF;
+ const gl=[...new Set(S.items.filter(i=>i.k==it.k).map(i=>i.g).filter(Boolean))];
+ const sec=F.map(([k,l])=>{let b;
+  if(k=='_c')b=it.c.map((c,i)=>`<div class="li"><input type="checkbox" data-ci="${i}" ${c.d?'checked':''}><input type="text" data-ci="${i}" value="${esc(c.t)}" placeholder="Ítem a preparar"><button class="x" data-a="xc" data-i="${i}">×</button></div>`).join('')+`<button class="add" data-a="ac">+ Ítem</button>`;
+  else if(k=='_p')b=it.pr.map((p,i)=>`<div class="pi"><div class="li"><input data-pi="${i}" data-pk="m" value="${esc(p.m)}" placeholder="Nombre del médico"><button class="x" data-a="xp" data-i="${i}">×</button></div><textarea data-pi="${i}" data-pk="t" placeholder="Sus preferencias: instrumental, suturas, posición…">${esc(p.t)}</textarea></div>`).join('')+`<button class="add" data-a="ap">+ Médico</button>`;
+  else b=`<textarea data-f="${k}" placeholder="Escribí acá…">${esc(it.f[k])}</textarea>`;
+  return`<section><h4>${l}</h4>${b}</section>`}).join('');
+ ed.innerHTML=`<div class="sheet" style="--h:${hue(it.g)}"><div class="eh"><button data-a="close">← Volver</button><button class="del" data-a="del">${delArm?'¿Seguro? Tocá otra vez':'Eliminar'}</button></div><input class="ti" data-k="t" value="${esc(it.t)}" placeholder="Nombre"><div class="row"><label class="f">${it.k=='p'?'Sistema':'Especialidad'}<input data-k="g" list="gl" value="${esc(it.g)}"></label>${it.k=='q'?`<label class="f">Subespecialidad<input data-k="s" value="${esc(it.s)}"></label>`:''}</div><datalist id="gl">${gl.map(g=>`<option value="${esc(g)}">`).join('')}</datalist><div class="seg">${ST.map((s,i)=>`<button data-a="st" data-v="${i}" class="s${i}${it.st==i?' on':''}">${s}</button>`).join('')}</div>${sec}</div>`;
+ ed.querySelectorAll('textarea').forEach(grow);ed.scrollTop=sc}
+const grow=t=>{t.style.height='auto';t.style.height=Math.max(t.scrollHeight+2,t.offsetHeight>0?0:78)+'px'};
+function openEd(it){cur=it;delArm=false;$('#ed').hidden=false;document.body.style.overflow='hidden';drawEd()}
+function closeEd(){$('#ed').hidden=true;$('#bk').hidden=true;document.body.style.overflow='';cur=null;save();render()}
+$('#ed').oninput=e=>{const t=e.target,it=cur;if(!it)return;const d=t.dataset;
+ if(d.f)it.f[d.f]=t.value;else if(d.k)it[d.k]=t.value;
+ else if(d.ci!=null){t.type=='checkbox'?it.c[d.ci].d=t.checked:it.c[d.ci].t=t.value}
+ else if(d.pi!=null)it.pr[d.pi][d.pk]=t.value;
+ if(t.tagName=='TEXTAREA')grow(t);save()};
+$('#ed').onclick=e=>{const b=e.target.closest('[data-a]');if(!b){if(e.target.id=='ed')closeEd();return}const a=b.dataset.a,it=cur,i=+b.dataset.i;
+ if(a=='close')return closeEd();
+ if(a=='del'){if(!delArm){delArm=true;drawEd();return}S.items=S.items.filter(x=>x!=it);return closeEd()}
+ if(a=='st')it.st=+b.dataset.v;if(a=='ac')it.c.push({t:'',d:false});if(a=='xc')it.c.splice(i,1);
+ if(a=='ap')it.pr.push({m:'',t:''});if(a=='xp')it.pr.splice(i,1);
+ save();drawEd()};
+document.addEventListener('keydown',e=>{if(e.key=='Escape'&&cur)closeEd()});
+$('#list').onclick=e=>{const c=e.target.closest('.card');if(c)openEd(S.items.find(x=>x.id==c.dataset.id))};
+$('#chips').onclick=e=>{const b=e.target.closest('.chip');if(b){grp=b.dataset.g;render()}};
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(b){tab=b.dataset.t;grp='';render()}};
+$('#q').oninput=e=>{qs=e.target.value;render()};
+$('#new').onclick=()=>{const it=mk(tab,'',grp);S.items.push(it);save();openEd(it);$('#ed .ti').focus()};
+$('#bkb').onclick=()=>{$('#bk').hidden=false;document.body.style.overflow='hidden';$('#bk').innerHTML=`<div class="sheet bk"><div class="eh"><button data-b="c">← Volver</button></div><h3>Respaldo</h3><p>Tus fichas se guardan en este navegador. Copiá el texto y guardalo (notas, mail) como copia de seguridad, o pegá uno acá para restaurarlo en otro dispositivo.</p><textarea id="bt">${esc(JSON.stringify(S))}</textarea><p id="bm"></p><button class="add" data-b="cp">Copiar</button><button class="add" data-b="im">Restaurar desde el texto pegado</button></div>`};
+$('#bk').onclick=e=>{const b=e.target.dataset.b;if(!b)return;const t=$('#bt');
+ if(b=='c')return closeEd();
+ if(b=='cp'){t.select();try{navigator.clipboard.writeText(t.value);$('#bm').textContent='Copiado.'}catch(x){document.execCommand('copy');$('#bm').textContent='Copiado.'}}
+ if(b=='im'){try{const o=JSON.parse(t.value);if(!Array.isArray(o.items))throw 0;S=o;save();render();$('#bm').textContent='Restaurado correctamente.'}catch(x){$('#bm').textContent='El texto no es un respaldo válido.'}}};
+render();
+</script></body></html>

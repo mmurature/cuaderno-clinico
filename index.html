@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#7c6fd6">
+  <meta name="description" content="Fichas de patologías y procedimientos, repaso diario y registro quirúrgico.">
+  <title>Cuaderno clínico</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <div class="w">
+      <div class="hr">
+        <h1>Cuaderno <span>clínico</span></h1>
+        <div class="hb">
+          <button class="gh" id="syb" title="Cuenta y sincronización"><i id="syd" class="dot"></i><span id="syl">Cuenta</span></button>
+          <button class="gh" id="bkb">Respaldo</button>
+        </div>
+      </div>
+      <input class="sr" id="q" type="search" placeholder="Buscar patología, procedimiento o texto…">
+      <div class="tabs" id="tabs">
+        <button data-t="p">Patologías</button>
+        <button data-t="q">Procedimientos</button>
+        <button data-t="r">Repaso</button>
+        <button data-t="s">Estadísticas</button>
+      </div>
+    </div>
+  </header>
+  <div class="w"><main><div id="bn"></div><div id="prog"></div><div id="list"><p class="meta" style="text-align:center;padding:40px 0">Cargando…</p></div></main></div>
+  <button class="fab" id="new">+ Nueva ficha</button>
+  <div class="ov" id="ed" hidden></div>
+  <div class="ov" id="bk" hidden></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
