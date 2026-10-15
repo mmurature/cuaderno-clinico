@@ -1,13 +1,16 @@
-# Cuaderno clínico
+# Meditas
 
-App web instalable (PWA) para estudiar patologías y procedimientos y, más adelante, para el trabajo diario de la residencia. Funciona sin conexión y en celular y compu. Si se configura Supabase, sincroniza entre dispositivos.
+(Antes “Cuaderno clínico”.) App web instalable (PWA) para estudiar patologías y procedimientos, armar evoluciones y usar calculadoras clínicas; más adelante, para el trabajo diario de la residencia. Funciona sin conexión y en celular y compu. Si se configura Supabase, sincroniza entre dispositivos.
 
 ## Estructura
 
 ```
 index.html            página principal
 src/main.js           interfaz (listas, editor de fichas, repaso, estadísticas, respaldo, cuenta)
-src/data.js           plantillas, modelo de datos y utilidades
+src/data.js           plantillas de fichas, modelo de datos y utilidades
+src/taxonomy.js       clasificación por defecto: capítulos y temas, especialidades
+src/evolucion.js      plantillas de evolución (normal / alterado / no evaluado)
+src/formulas.js       fórmulas y calculadoras editables
 src/store.js          guardado local en IndexedDB (migra desde los prototipos v1/v2)
 src/backup.js         respaldo .json y exportación .csv
 src/sync.js           sincronización opcional con Supabase

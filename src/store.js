@@ -3,6 +3,7 @@
 // (modo privado viejo, permisos), cae a localStorage y, en último caso, a memoria.
 import { def, seed, migrateV1, isValidState } from './data.js';
 
+// El nombre de la base queda como 'cuaderno-clinico' (nombre anterior de la app) para no perder datos guardados.
 const DB = 'cuaderno-clinico', STORE = 'kv', KEY = 'state';
 let dbp = null, mem = null, backend = 'idb';
 
@@ -42,7 +43,7 @@ export const setRaw = async (k, v) => {
 // Carga el estado: IndexedDB → migración desde los prototipos (localStorage) → datos de ejemplo.
 export async function load() {
   const s = await getRaw(KEY);
-  if (isValidState(s)) return def(s);
+  if (isValidState(s)) return def(migrateV1(s));
   try {
     const v2 = localStorage.getItem('cuaderno-v2');
     if (v2) { const st = def(migrateV1(JSON.parse(v2))); await setRaw(KEY, st); return st; }

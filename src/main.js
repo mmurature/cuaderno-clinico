@@ -1,5 +1,8 @@
 import './styles.css';
-import { ST, IV, FL, TN, fieldsOf, mk, hue, esc, shuf, today, addD, cnt, def } from './data.js';
+import { ST, IV, FL, LV, fieldsOf, groupOf, mk, hue, esc, shuf, today, addD, cnt, def, migrateV1 } from './data.js';
+import { ensureTx, roman } from './taxonomy.js';
+import { initEvo, evo, EVR, evoInput, evoChange } from './evolucion.js';
+import { initFormulas, fmv, fcalc, FMR, formulaSheetClick } from './formulas.js';
 import * as store from './store.js';
 import * as backup from './backup.js';
 import * as sync from './sync.js';
@@ -24,16 +27,26 @@ const bars = (o, fmt = v => v, mx) => {
 function streak() { let d = today(), n = 0; if (!S.hist[d]) d = addD(d, -1); while (S.hist[d]) { n++; d = addD(d, -1); } return n; }
 const dueFichas = () => S.items.filter(i => i.nx && i.nx <= today());
 
-// Preguntas: banco importado + autogeneradas desde las fichas
-function qpool() {
-  const out = S.qb.map((x, i) => ({ key: 'b' + i, c: x.c || 'General', q: x.q, o: x.o, a: x.a, s: x.s, e: x.e }));
-  ['p', 'q'].forEach(k => {
+// Preguntas: autogeneradas desde las fichas (+ banco importado en el modo mixto).
+// Modo: 'p' patologías · 'q' procedimientos · 'x' mixto
+const MODES = { p: 'Patologías', q: 'Procedimientos', x: 'Mixto' };
+function qpool(m = S.cfg.m || 'x') {
+  const out = m == 'x' ? S.qb.map((x, i) => ({ key: 'b' + i, c: x.c || 'General', q: x.q, o: x.o, a: x.a, s: x.s, e: x.e })) : [];
+  ['p', 'q'].filter(k => m == 'x' || m == k).forEach(k => {
     const A = S.items.filter(i => i.k == k && i.t.trim());
     if (A.length < 4) return;
     A.forEach(i => Object.keys(FL).forEach(f => {
       const v = (i.f[f] || '').trim(); if (v.length < 25) return;
+      // pregunta 1: a qué ficha corresponde el texto
       const o = shuf([i, ...shuf(A.filter(x => x != i)).slice(0, 3)]);
-      out.push({ key: `a:${i.id}:${f}`, c: i.g || 'Fichas', q: `¿A qué ${k == 'p' ? 'patología' : 'procedimiento'} corresponde este texto de «${FL[f]}»?\n“${v.slice(0, 300)}”`, o: o.map(x => x.t), a: o.indexOf(i), s: 'Tu ficha: ' + i.t });
+      out.push({ key: `a:${i.id}:${f}`, c: groupOf(i) || 'Fichas', q: `¿A qué ${k == 'p' ? 'patología' : 'procedimiento'} corresponde este texto de «${FL[f]}»?\n“${v.slice(0, 300)}”`, o: o.map(x => x.t), a: o.indexOf(i), s: 'Tu ficha: ' + i.t });
+      // pregunta 2: cuál es el texto de ese apartado (distractores: el mismo apartado de otras fichas)
+      const B = A.filter(x => x != i && (x.f[f] || '').trim().length >= 25);
+      if (B.length >= 3) {
+        const cut = t => t.trim().slice(0, 220) + (t.trim().length > 220 ? '…' : '');
+        const o2 = shuf([i, ...shuf(B).slice(0, 3)]);
+        out.push({ key: `b:${i.id}:${f}`, c: groupOf(i) || 'Fichas', q: `${i.t}: ¿cuál es su ${FL[f]}?`, o: o2.map(x => cut(x.f[f])), a: o2.indexOf(i), s: 'Tu ficha: ' + i.t });
+      }
     }));
   });
   return out;
@@ -46,22 +59,27 @@ function banner() {
 }
 function card(i) {
   const F = fieldsOf(i).filter(([k]) => k[0] != '_'), n = F.filter(([k]) => (i.f[k] || '').trim()).length, du = i.nx && i.nx <= today();
-  return `<article class="card" style="--h:${hue(i.g)}" data-id="${i.id}"><div class="top"><span class="tag">${esc(i.k == 'q' ? (i.e || 'Sin especialidad') : TN[i.ty || 'gen'])}</span><span class="st s${i.st}">${ST[i.st]}</span></div><h3>${esc(i.t || 'Sin título')}</h3><div class="meta">${n}/${F.length} apartados${i.l.length ? ' · ' + i.l.length + ' vínculos' : ''}${du ? ' · <span class="due">Repasar hoy</span>' : ''}</div></article>`;
+  return `<article class="card" style="--h:${hue(groupOf(i))}" data-id="${i.id}"><div class="top"><span class="tag">${esc(i.s || 'General')}</span><span class="st s${i.st}">${ST[i.st]}</span></div><h3>${esc(i.t || 'Sin título')}</h3><div class="meta">${n}/${F.length} apartados${i.l.length ? ' · ' + i.l.length + ' vínculos' : ''}${du ? ' · <span class="due">Repasar hoy</span>' : ''}</div></article>`;
 }
+// Árbol: capítulo/especialidad > tema/subespecialidad > fichas, en el orden de la clasificación.
 function tree(its) {
-  const m = {}, ql = qs.toLowerCase();
+  const T = ensureTx(S)[tab], ql = qs.toLowerCase(), none = tab == 'q' ? 'Sin especialidad' : 'Sin capítulo';
+  const m = {};
+  if (!ql) Object.keys(T).forEach(g => { m[g] = {}; T[g].forEach(s => { m[g][s] = []; }); });
   its.forEach(i => {
     if (ql && !(i.t + i.g + i.s + i.e + Object.values(i.f).join(' ')).toLowerCase().includes(ql)) return;
-    const g = i.g || 'Sin sistema', s = i.s || 'General';
+    const g = groupOf(i) || none, s = i.s || 'General';
     ((m[g] ??= {})[s] ??= []).push(i);
   });
-  const ks = Object.keys(m).sort();
+  const order = Object.keys(T), pos = (arr, x) => { const p = arr.indexOf(x); return p < 0 ? 1e6 : p; };
+  const ks = Object.keys(m).sort((a, b) => pos(order, a) - pos(order, b) || a.localeCompare(b));
   if (!ks.length) return `<p class="meta" style="text-align:center;padding:40px 0">${qs ? 'Nada coincide con la búsqueda.' : 'No hay fichas. Tocá “+ Nueva ficha”.'}</p>`;
   return ks.map(g => {
-    const all = Object.values(m[g]).flat(), d = all.filter(i => i.st == 2).length, k = tab + g;
-    return `<details class="g" style="--h:${hue(g)}" data-k="${esc(k)}" ${op.has(k) || qs ? 'open' : ''}><summary><span class="gt">${esc(g)}</span><span class="gc">${d}/${all.length}</span><span class="mb"><i style="width:${d / all.length * 100}%"></i></span></summary>${Object.keys(m[g]).sort().map(s => {
-      const k2 = k + '|' + s;
-      return `<details class="sg" data-k="${esc(k2)}" ${op.has(k2) || qs ? 'open' : ''}><summary>${esc(s)} <em>${m[g][s].length}</em></summary><div class="cards">${m[g][s].sort((a, b) => a.t.localeCompare(b.t)).map(card).join('')}</div></details>`;
+    const all = Object.values(m[g]).flat(), d = all.filter(i => i.st == 2).length, k = tab + g, gi = order.indexOf(g), subs = T[g] || [];
+    const gl = tab == 'p' && gi >= 0 ? `Capítulo ${roman(gi)}. ${g}` : g;
+    return `<details class="g" style="--h:${hue(g)}" data-k="${esc(k)}" ${op.has(k) || qs ? 'open' : ''}><summary><span class="gt">${esc(gl)}</span><span class="gc">${d}/${all.length}</span><span class="mb"><i style="width:${all.length ? d / all.length * 100 : 0}%"></i></span></summary>${Object.keys(m[g]).sort((a, b) => pos(subs, a) - pos(subs, b) || a.localeCompare(b)).map(s => {
+      const k2 = k + '|' + s, a = m[g][s], si = subs.indexOf(s), sl = tab == 'p' && si >= 0 ? `Tema ${si + 1}. ${s}` : s;
+      return `<details class="sg" data-k="${esc(k2)}" ${op.has(k2) || qs ? 'open' : ''}><summary>${esc(sl)} <em>${a.length}</em></summary><div class="cards">${a.sort((x, y) => x.t.localeCompare(y.t)).map(card).join('')}</div><div style="padding:0 14px 12px"><button class="add" data-r="nws" data-g="${esc(g)}" data-s="${esc(s)}">+ Ficha en ${esc(s)}</button></div></details>`;
     }).join('')}</details>`;
   }).join('');
 }
@@ -69,7 +87,9 @@ function tree(its) {
 /* ---------- repaso ---------- */
 function repHome() {
   const t = today(), P = qpool(), dn = S.hist[t], du = dueFichas();
-  return `<div class="pan"><h3>Repaso diario</h3><p class="meta">${dn ? `Hoy completaste ${dn.ok}/${dn.n} · ` : 'Hoy: pendiente · '}Racha: ${streak()} día(s) · ${P.length} preguntas disponibles (${S.qb.length} del banco, ${P.length - S.qb.length} de tus fichas)</p>
+  return `<div class="pan"><h3>Repaso diario</h3><p class="meta">${dn ? `Hoy completaste ${dn.ok}/${dn.n} · ` : 'Hoy: pendiente · '}Racha: ${streak()} día(s) · ${P.length} preguntas disponibles en modo ${MODES[S.cfg.m || 'x'].toLowerCase()}${(S.cfg.m || 'x') == 'x' ? ` (${S.qb.length} del banco, ${P.length - S.qb.length} de tus fichas)` : ''}</p>
+  <p class="meta">Las preguntas se arman con el texto de tus fichas: hacen falta al menos 4 fichas del mismo tipo con apartados completos.</p>
+  <div class="seg">${Object.entries(MODES).map(([k, l]) => `<button data-r="mode" data-v="${k}" class="${(S.cfg.m || 'x') == k ? 'on' : ''}" style="${(S.cfg.m || 'x') == k ? 'color:var(--pri)' : ''}">${l}</button>`).join('')}</div>
   <div class="tl"><label class="f">Hora<input type="time" data-cfg="t" value="${S.cfg.t}"></label><label class="f">Preguntas por día<select data-cfg="n">${[3, 5, 8, 10].map(n => `<option ${S.cfg.n == n ? 'selected' : ''}>${n}</option>`).join('')}</select></label><button class="bt" data-r="start" ${P.length ? '' : 'disabled'}>Empezar repaso</button></div>
   <p class="meta" style="margin-top:10px">Avisos: <button class="add" data-r="notif">${S.cfg.nt ? 'Activados mientras la app esté abierta' : 'Activar avisos'}</button> Para no depender de la app, poné también una alarma diaria en el celular a esa hora.</p></div>
   <div class="pan"><h3>Fichas para repasar hoy (${du.length})</h3>${du.map(i => `<button class="chip" data-r="gof" data-i="${i.id}">${esc(i.t)}</button>`).join('') || '<p class="meta">Ninguna. Asignales una fecha de repaso dentro de cada ficha.</p>'}</div>
@@ -83,36 +103,36 @@ function repQ() {
 /* ---------- estadísticas ---------- */
 function stats() {
   const P = S.items.filter(i => i.k == 'p'), Q = S.items.filter(i => i.k == 'q'), L = S.lg, dm = a => a.filter(i => i.st == 2).length;
-  const sys = cnt(P, i => i.g || 'Sin sistema'), dom = {};
-  Object.keys(sys).forEach(g => dom[g] = Math.round(P.filter(i => (i.g || 'Sin sistema') == g && i.st == 2).length / sys[g] * 100));
+  const sys = cnt(P, i => i.g || 'Sin capítulo'), dom = {};
+  Object.keys(sys).forEach(g => dom[g] = Math.round(P.filter(i => (i.g || 'Sin capítulo') == g && i.st == 2).length / sys[g] * 100));
   const cat = {}; Object.entries(S.cs).forEach(([c, v]) => cat[c] = Math.round(v.ok / v.n * 100));
   const cp = L.filter(x => x.c == 'Sí').length, mo = cnt(L, x => x.d.slice(0, 7));
   const tot = Object.values(S.hist).reduce((a, v) => a + v.n, 0), okk = Object.values(S.hist).reduce((a, v) => a + v.ok, 0);
   return `<div class="kp"><div><b>${P.length}</b>patologías (${dm(P)} dominadas)</div><div><b>${Q.length}</b>fichas de procedimientos</div><div><b>${L.length}</b>procedimientos realizados</div><div><b>${streak()}</b>días de racha</div></div>
-  <div class="pan"><h3>Estudio</h3><p class="meta">Dominio por sistema</p>${bars(dom, v => v + '%', 100)}<p class="meta" style="margin-top:10px">Estado de las fichas</p>${bars(cnt(S.items, i => ST[i.st]))}<p class="meta" style="margin-top:10px">Precisión en repasos por categoría (${tot ? Math.round(okk / tot * 100) + '% global' : 'sin datos'})</p>${bars(cat, v => v + '%', 100)}</div>
+  <div class="pan"><h3>Estudio</h3><p class="meta">Dominio por capítulo</p>${bars(dom, v => v + '%', 100)}<p class="meta" style="margin-top:10px">Estado de las fichas</p>${bars(cnt(S.items, i => ST[i.st]))}<p class="meta" style="margin-top:10px">Precisión en repasos por categoría (${tot ? Math.round(okk / tot * 100) + '% global' : 'sin datos'})</p>${bars(cat, v => v + '%', 100)}</div>
   <div class="pan"><h3>Registro de procedimientos realizados</h3><p class="meta">Sin datos identificables del paciente: solo procedimiento, rol y resultado.</p><div class="tl"><label class="f">Fecha<input type="date" id="lf-d" value="${today()}"></label><label class="f">Procedimiento<input id="lf-p" list="ql"></label><datalist id="ql">${Q.map(i => `<option value="${esc(i.t)}">`).join('')}</datalist><label class="f">Rol<select id="lf-r"><option>Cirujano</option><option>Ayudante</option><option>Observador</option></select></label><label class="f">Tipo<select id="lf-t"><option>Electivo</option><option>Urgencia</option></select></label><label class="f">Complicación<select id="lf-c"><option>No</option><option>Sí</option></select></label><button class="bt" data-r="addlog">Registrar</button></div></div>
   <div class="pan"><h3>Estadísticas quirúrgicas</h3><p class="meta">Complicaciones: ${L.length ? Math.round(cp / L.length * 100) + '% (' + cp + ' de ' + L.length + ')' : 'sin datos'}</p><p class="meta">Por rol</p>${bars(cnt(L, x => x.r))}<p class="meta" style="margin-top:10px">Electivo vs urgencia</p>${bars(cnt(L, x => x.t))}<p class="meta" style="margin-top:10px">Procedimientos más frecuentes</p>${bars(Object.fromEntries(Object.entries(cnt(L, x => x.p || 'Sin nombre')).sort((a, b) => b[1] - a[1]).slice(0, 6)))}<p class="meta" style="margin-top:10px">Por mes</p>${bars(Object.fromEntries(Object.entries(mo).sort().slice(-6)))}<p class="meta" style="margin-top:10px">Últimos registros</p>${L.slice(-5).reverse().map(x => `<div class="li"><span class="meta" style="flex:1">${x.d} · ${esc(x.p)} · ${x.r} · ${x.t}${x.c == 'Sí' ? ' · complicación' : ''}</span><button class="x" data-r="dellog" data-i="${S.lg.indexOf(x)}" aria-label="Borrar">×</button></div>`).join('')}</div>`;
 }
 
 function render() {
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t == tab));
+  document.querySelectorAll('#tabs button').forEach(b => { b.classList.toggle('on', b.dataset.t == tab); if (b.dataset.t == tab) b.scrollIntoView({ inline: 'nearest', block: 'nearest' }); });
   const pq = tab == 'p' || tab == 'q';
   $('#new').hidden = !pq; banner();
   if (pq) {
     const its = S.items.filter(i => i.k == tab), d = its.filter(i => i.st == 2).length;
-    $('#prog').innerHTML = `<div><b>${d}</b> de ${its.length} dominadas</div><div class="bar"><i style="width:${its.length ? d / its.length * 100 : 0}%"></i></div>`;
+    $('#prog').innerHTML = `<div><b>${d}</b> de ${its.length} dominadas</div><div class="bar"><i style="width:${its.length ? d / its.length * 100 : 0}%"></i></div><button class="add" data-r="cls" style="margin:0">Editar clasificación</button>`;
     $('#list').innerHTML = tree(its);
   } else {
     $('#prog').innerHTML = '';
     $('#list').innerHTML = tab == 'r'
       ? (sess ? (sess.fin ? `<div class="pan"><h3>Repaso terminado</h3><p>Acertaste ${sess.ok} de ${sess.qs.length}.</p><button class="bt" data-r="end">Volver</button></div>` : repQ()) : repHome())
-      : stats();
+      : tab == 'v' ? evo() : tab == 'f' ? fmv() : stats();
   }
 }
 
 /* ---------- editor de ficha ---------- */
 function drawEd() {
-  const it = cur, ed = $('#ed'), sc = ed.scrollTop, uniq = f => [...new Set(S.items.map(f).filter(Boolean))];
+  const it = cur, ed = $('#ed'), sc = ed.scrollTop, uniq = f => [...new Set(S.items.map(f).filter(x => typeof x == 'string' && x))];
   const sec = fieldsOf(it).map(([k, l]) => {
     let b;
     if (k == '_c') b = it.c.map((c, i) => `<div class="li"><input type="checkbox" data-ci="${i}" ${c.d ? 'checked' : ''}><input type="text" data-ci="${i}" value="${esc(c.t)}" placeholder="Ítem a preparar"><button class="x" data-a="xc" data-i="${i}" aria-label="Quitar">×</button></div>`).join('') + `<button class="add" data-a="ac">+ Ítem</button>`;
@@ -121,10 +141,13 @@ function drawEd() {
     return `<section><h4>${l}</h4>${b}</section>`;
   }).join('');
   const oth = S.items.filter(x => x != it && !it.l.includes(x.id)).sort((a, b) => a.t.localeCompare(b.t));
-  ed.innerHTML = `<div class="sheet" style="--h:${hue(it.g)}"><div class="eh"><button data-a="close">← Volver</button><button class="del" data-a="del">${delArm ? '¿Seguro? Tocá otra vez' : 'Eliminar'}</button></div>
+  const T = ensureTx(S)[it.k], G = it.k == 'q' ? 'e' : 'g', [L1, L2] = LV[it.k], gv = it[G];
+  const fmtD = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('es-AR') : '';
+  ed.innerHTML = `<div class="sheet" style="--h:${hue(gv)}"><div class="eh"><button data-a="close">← Volver</button><button class="del" data-a="del">${delArm ? '¿Seguro? Tocá otra vez' : 'Eliminar'}</button></div>
   <input class="ti" data-k="t" value="${esc(it.t)}" placeholder="Nombre">
-  <div class="row"><label class="f">Sistema<input data-k="g" list="l1" value="${esc(it.g)}"></label><label class="f">Subsistema<input data-k="s" list="l2" value="${esc(it.s)}"></label>${it.k == 'q' ? `<label class="f">Especialidad / subespecialidad<input data-k="e" list="l3" value="${esc(it.e)}"></label>` : `<label class="f">Tipo<select data-ty>${Object.entries(TN).map(([k, v]) => `<option value="${k}" ${it.ty == k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>`}</div>
-  <datalist id="l1">${uniq(i => i.g).map(g => `<option value="${esc(g)}">`).join('')}</datalist><datalist id="l2">${uniq(i => i.s).map(g => `<option value="${esc(g)}">`).join('')}</datalist><datalist id="l3">${uniq(i => i.e).map(g => `<option value="${esc(g)}">`).join('')}</datalist>
+  <div class="row"><label class="f">${L1}<input data-k="${G}" list="l1" value="${esc(gv)}"></label><label class="f">${L2}<input data-k="s" list="l2" value="${esc(it.s)}"></label></div>
+  <p class="meta" id="rev">${it.ra ? 'Última revisión: ' + fmtD(it.ra) : 'Sin modificaciones todavía'}</p>
+  <datalist id="l1">${[...new Set([...Object.keys(T), ...uniq(x => x.k == it.k && x[G])])].map(g => `<option value="${esc(g)}">`).join('')}</datalist><datalist id="l2">${[...new Set([...(T[gv] || []), ...S.items.filter(x => x.k == it.k && x[G] == gv).map(x => x.s).filter(Boolean)])].map(g => `<option value="${esc(g)}">`).join('')}</datalist>
   <div class="seg">${ST.map((s, i) => `<button data-a="st" data-v="${i}" class="s${i}${it.st == i ? ' on' : ''}">${s}</button>`).join('')}</div>
   <div class="tl"><label class="f">Próximo repaso<input type="date" data-k="nx" value="${it.nx || ''}"></label><button class="add" data-a="rep">Repasada hoy</button></div>${sec}
   <section><h4>Fichas relacionadas</h4>${it.l.map(id => find(id)).filter(Boolean).map(x => `<button class="chip" data-a="go" data-i="${x.id}">${esc(x.t)}</button>`).join('')}<select data-add><option value="">+ Vincular ficha…</option>${oth.map(x => `<option value="${x.id}">${x.k == 'p' ? 'Patología' : 'Procedimiento'} · ${esc(x.t)}</option>`).join('')}</select></section></div>`;
@@ -143,11 +166,14 @@ $('#ed').oninput = e => {
   else if (d.ci != null) { t.type == 'checkbox' ? it.c[d.ci].d = t.checked : it.c[d.ci].t = t.value; }
   else if (d.pi != null) it.pr[d.pi][d.pk] = t.value;
   if (t.tagName == 'TEXTAREA') grow(t);
-  save();
+  touch(it); save();
 };
+// Fecha de revisión automática: se actualiza con cada cambio de contenido de la ficha
+function touch(it) { const t = today(); if (it.ra != t) { it.ra = t; const el = $('#rev'); if (el) el.textContent = 'Última revisión: ' + new Date(t + 'T12:00:00').toLocaleDateString('es-AR'); } }
 $('#ed').onchange = e => {
   const t = e.target;
-  if (t.hasAttribute('data-ty')) { cur.ty = t.value; save(); drawEd(); }
+  // al cambiar el capítulo/especialidad se actualiza la lista de temas sugeridos
+  if (t.dataset.k == 'g' || t.dataset.k == 'e') drawEd();
   if (t.hasAttribute('data-add') && t.value) { const o = find(t.value); cur.l.push(o.id); o.l.includes(cur.id) || o.l.push(cur.id); save(); drawEd(); }
 };
 $('#ed').onclick = e => {
@@ -164,6 +190,7 @@ $('#ed').onclick = e => {
   }
   if (a == 'st') it.st = +b.dataset.v;
   if (a == 'rep') { it.nx = addD(today(), IV[it.st]); toast('Próximo repaso: ' + it.nx); }
+  if (['ac', 'xc', 'ap', 'xp'].includes(a)) touch(it);
   if (a == 'ac') it.c.push({ t: '', d: false });
   if (a == 'xc') it.c.splice(i, 1);
   if (a == 'ap') it.pr.push({ m: '', t: '' });
@@ -208,22 +235,58 @@ const R = {
     if (!g('p').trim()) return toast('Escribí el procedimiento');
     S.lg.push({ d: g('d') || today(), p: g('p').trim(), r: g('r'), t: g('t'), c: g('c') }); save(); render(); toast('Registrado');
   },
-  dellog(b) { S.lg.splice(+b.dataset.i, 1); save(); render(); }
+  dellog(b) { S.lg.splice(+b.dataset.i, 1); save(); render(); },
+  mode(b) { S.cfg.m = b.dataset.v; save(); render(); },
+  cls() { openSheet(clsHtml()); },
+  // nueva ficha directamente dentro de un tema / subespecialidad
+  nws(b) {
+    const it = mk(tab, ''), g = b.dataset.g.startsWith('Sin ') ? '' : b.dataset.g, sb = b.dataset.s == 'General' ? '' : b.dataset.s;
+    if (tab == 'q') it.e = g; else it.g = g;
+    it.s = sb; S.items.push(it); save(); openEd(it); $('#ed .ti').focus();
+  },
+  ...EVR, ...FMR
 };
+
+/* ---------- clasificación editable ---------- */
+const openSheet = h => { $('#bk').hidden = false; $('#bk').dataset.view = 'sheet'; lock(true); $('#bk').innerHTML = h; };
+function clsHtml() {
+  const T = ensureTx(S)[tab], P = tab == 'p', [L1, L2] = LV[tab];
+  return `<div class="sheet"><div class="eh"><button data-b="c">← Volver</button></div><h3>Clasificación de ${P ? 'patologías' : 'procedimientos'}</h3><p class="meta">${L1} &gt; ${L2.toLowerCase()}. Agregá, quitá o reordená niveles. Solo se pueden quitar los que no tienen fichas.</p>
+  ${Object.keys(T).map((g, gi) => `<div class="pan"><div class="li"><b style="flex:1">${P ? `Capítulo ${roman(gi)}. ` : ''}${esc(g)}</b><button class="x" data-c="ug" data-g="${esc(g)}" aria-label="Subir">↑</button><button class="x" data-c="dg" data-g="${esc(g)}" aria-label="Quitar">×</button></div><div>${T[g].map((x, si) => `<button class="chip" data-c="ds" data-g="${esc(g)}" data-s="${esc(x)}">${P ? si + 1 + '. ' : ''}${esc(x)} ×</button>`).join('')}</div><div class="tl"><input class="sr" style="margin:0;flex:1" placeholder="Nuevo ${L2.toLowerCase()}" data-cin="${esc(g)}"><button class="add" data-c="as" data-g="${esc(g)}">Agregar</button></div></div>`).join('')}
+  <div class="tl"><input class="sr" id="cg" style="margin:0;flex:1" placeholder="Nuevo ${L1.toLowerCase()}"><button class="bt" data-c="ag">Agregar</button></div><p class="meta" id="cm"></p></div>`;
+}
+$('#bk').addEventListener('click', e => {
+  if (formulaSheetClick(e)) return;
+  const b = e.target.closest('[data-c]'); if (!b) return;
+  const T = ensureTx(S)[tab], d = b.dataset, c = d.c, use = f => S.items.some(i => i.k == tab && f(i));
+  let m = '';
+  if (c == 'ag') { const v = $('#cg').value.trim(); if (v && !T[v]) T[v] = []; }
+  if (c == 'as') { const v = document.querySelector(`[data-cin="${CSS.escape(d.g)}"]`).value.trim(); if (v && !T[d.g].includes(v)) T[d.g].push(v); }
+  if (c == 'dg') { if (use(i => groupOf(i) == d.g)) m = 'No se puede quitar: tiene fichas.'; else delete T[d.g]; }
+  if (c == 'ds') { if (use(i => groupOf(i) == d.g && i.s == d.s)) m = 'No se puede quitar: tiene fichas.'; else T[d.g] = T[d.g].filter(x => x != d.s); }
+  if (c == 'ug') {
+    // reordena: sube el grupo un lugar (el orden de las claves define el orden en pantalla)
+    const ks = Object.keys(T), p = ks.indexOf(d.g);
+    if (p > 0) { [ks[p - 1], ks[p]] = [ks[p], ks[p - 1]]; S.tx[tab] = Object.fromEntries(ks.map(k => [k, T[k]])); }
+  }
+  save(); $('#bk').innerHTML = clsHtml(); $('#cm').textContent = m; render();
+});
 $('#list').onclick = e => {
   const c = e.target.closest('.card'); if (c) return openEd(find(c.dataset.id));
   const g = e.target.closest('[data-go]'); if (g) { tab = g.dataset.go; return render(); }
   const b = e.target.closest('[data-r]'); if (b) R[b.dataset.r](b);
 };
 $('#bn').onclick = e => { const g = e.target.closest('[data-go]'); if (g) { tab = g.dataset.go; render(); } };
-$('#list').onchange = e => { const c = e.target.dataset.cfg; if (c) { S.cfg[c] = c == 'n' ? +e.target.value : e.target.value; save(); } };
+$('#list').onchange = e => { const c = e.target.dataset.cfg; if (c) { S.cfg[c] = c == 'n' ? +e.target.value : e.target.value; save(); } evoChange(e); };
+$('#list').addEventListener('input', e => { const d = e.target.dataset; if (d.fk) fcalc(d.fk); evoInput(e); });
+$('#prog').onclick = e => { const b = e.target.closest('[data-r]'); if (b) R[b.dataset.r](b); };
 $('#list').addEventListener('toggle', e => { const k = e.target.dataset.k; if (k && !qs) e.target.open ? op.add(k) : op.delete(k); }, true);
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) { tab = b.dataset.t; render(); } };
 $('#q').oninput = e => { qs = e.target.value; if (tab != 'p' && tab != 'q') tab = 'p'; render(); };
 $('#new').onclick = () => { const it = mk(tab, ''); S.items.push(it); save(); openEd(it); $('#ed .ti').focus(); };
 
 /* ---------- respaldo ---------- */
-function replaceState(n, msg) { S = def(n); sess = null; save(); render(); if (msg) toast(msg); }
+function replaceState(n, msg) { S = def(migrateV1(n)); ensureTx(S); sess = null; save(); render(); if (msg) toast(msg); }
 async function drawBackup() {
   const copy = await store.getRaw('copia');
   $('#bk').innerHTML = `<div class="sheet"><div class="eh"><button data-b="c">← Volver</button></div><h3>Respaldo y exportación</h3>
@@ -320,8 +383,12 @@ setInterval(() => {
   }
 }, 30000);
 
+initEvo({ getS: () => S, save, render });
+initFormulas({ getS: () => S, save, render, toast, op, openSheet, close: () => closeAll() });
+
 (async () => {
   S = await store.load();
+  ensureTx(S);
   render();
   store.persist();
   sync.init({

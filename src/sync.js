@@ -2,13 +2,14 @@
 // Se activa sola si existen VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (ver README).
 // Guarda el estado de estudio completo como un documento JSON por usuaria (tabla `cuadernos`).
 // Nunca sube datos de pacientes: esos van a vivir solo en el dispositivo (fase 3).
-import { def } from './data.js';
+import { def, migrateV1 } from './data.js';
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL, SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const enabled = !!(SB_URL && SB_KEY);
 
 // Claves que nunca salen del dispositivo
-const LOCAL_ONLY = ['meta', 'vault'];
+// ev = borradores de evolución (hallazgos de examen): se quedan en el dispositivo
+const LOCAL_ONLY = ['meta', 'vault', 'ev'];
 const LOCAL_CFG = ['nt', 'last'];
 
 let sb = null, user = null, status = enabled ? 'out' : 'off', lastError = '', busy = false, again = false, timer = null;
@@ -54,9 +55,10 @@ const payload = S => {
 };
 
 function fromRemote(row, S) {
-  const n = def(structuredClone(row.data));
+  const n = def(migrateV1(structuredClone(row.data)));
   LOCAL_CFG.forEach(k => { if (S.cfg[k] !== undefined) n.cfg[k] = S.cfg[k]; });
   if (S.vault) n.vault = S.vault;
+  if (S.ev) n.ev = S.ev;
   n.meta = { ...S.meta, uid: user.id, remoteAt: Date.parse(row.updated_at), updatedAt: S.meta.updatedAt, syncedLocal: S.meta.updatedAt };
   return n;
 }

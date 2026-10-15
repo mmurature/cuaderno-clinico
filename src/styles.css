@@ -90,3 +90,7 @@ textarea{width:100%;min-height:78px;resize:none;overflow:hidden;padding:10px 12p
 
 #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:40;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:500;transition:opacity .2s,transform .2s;max-width:calc(100% - 32px)}
 #toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* evolución */
+.chip.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+#vout{min-height:300px;overflow:auto;font-size:13px}

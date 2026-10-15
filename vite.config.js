@@ -11,9 +11,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Cuaderno clínico',
-        short_name: 'Cuaderno',
-        description: 'Fichas de patologías y procedimientos, repaso diario y registro quirúrgico.',
+        name: 'Meditas',
+        short_name: 'Meditas',
+        description: 'Fichas de patologías y procedimientos, repaso diario, evoluciones, fórmulas y registro quirúrgico.',
         lang: 'es-AR',
         theme_color: '#7c6fd6',
         background_color: '#f8f7fc',
