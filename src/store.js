@@ -66,7 +66,7 @@ export async function flush() {
   if (!pending) return;
   const s = pending; pending = null;
   // structuredClone evita guardar referencias que se sigan mutando a mitad de la escritura
-  await setRaw(KEY, structuredClone(s));
+  await setRaw(KEY, typeof structuredClone == "function" ? structuredClone(s) : JSON.parse(JSON.stringify(s)));
 }
 addEventListener('pagehide', flush);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState == 'hidden') flush(); });

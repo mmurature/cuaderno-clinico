@@ -55,7 +55,7 @@ const payload = S => {
 };
 
 function fromRemote(row, S) {
-  const n = def(migrateV1(structuredClone(row.data)));
+  const n = def(migrateV1(JSON.parse(JSON.stringify(row.data))));
   LOCAL_CFG.forEach(k => { if (S.cfg[k] !== undefined) n.cfg[k] = S.cfg[k]; });
   if (S.vault) n.vault = S.vault;
   if (S.ev) n.ev = S.ev;

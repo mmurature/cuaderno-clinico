@@ -6,7 +6,9 @@
 
 ```
 index.html            página principal
-src/main.js           interfaz (listas, editor de fichas, repaso, estadísticas, respaldo, cuenta)
+src/app.js            interfaz: rutas, navegación, Hoy, fichas (lectura/edición), repaso, Más, hojas
+src/icons.js          íconos y logo en SVG
+src/theme.js          identidades visuales (pastel, cuaderno, clínico) y modo claro/oscuro
 src/data.js           plantillas de fichas, modelo de datos y utilidades
 src/taxonomy.js       clasificación por defecto: capítulos y temas, especialidades
 src/evolucion.js      plantillas de evolución (normal / alterado / no evaluado)

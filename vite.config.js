@@ -6,6 +6,8 @@ const base = process.env.BASE_PATH || '/';
 
 export default defineConfig({
   base,
+  // Compatibilidad: iPhone con iOS 14+, Android/Chrome y Firefox de los últimos años
+  build: { target: ['es2019', 'safari14', 'chrome87', 'firefox78', 'edge88'], cssTarget: ['safari14', 'chrome87', 'firefox78'] },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -15,8 +17,8 @@ export default defineConfig({
         short_name: 'Meditas',
         description: 'Fichas de patologías y procedimientos, repaso diario, evoluciones, fórmulas y registro quirúrgico.',
         lang: 'es-AR',
-        theme_color: '#7c6fd6',
-        background_color: '#f8f7fc',
+        theme_color: '#f3f6f8',
+        background_color: '#f3f6f8',
         display: 'standalone',
         start_url: base,
         scope: base,
