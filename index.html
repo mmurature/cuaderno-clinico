@@ -24,6 +24,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Splash: ECG que se dibuja y forma el logo (estilos acá para que aparezca antes que todo) */
+    #splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: var(--bg, #f3f6f8); transition: opacity .45s ease, visibility .45s; }
+    #splash.out { opacity: 0; visibility: hidden; }
+    #ecg { width: 100vw; height: 96px; overflow: visible; }
+    #ecg-trace { stroke: var(--pri, #0c8587); transition: opacity .45s ease; }
+    #ecg-dot { fill: var(--pri, #0c8587); filter: drop-shadow(0 0 4px var(--pri, #0c8587)); transition: opacity .3s; }
+    #ecg-box { fill: var(--pri, #0c8587); transform-box: fill-box; transform-origin: center; transform: scale(0); opacity: 0; transition: transform .5s cubic-bezier(.2, .9, .3, 1.2), opacity .3s; }
+    #ecg-m { stroke: var(--pri, #0c8587); opacity: 0; transition: stroke .4s ease .1s; }
+    #splash.formed #ecg-trace { opacity: 0; }
+    #splash.formed #ecg-dot { opacity: 0; }
+    #splash.formed #ecg-m { opacity: 1; stroke: var(--pri-ink, #ffffff); }
+    #splash.formed #ecg-box { transform: scale(1); opacity: 1; }
+    #splash .word { font-family: var(--font-head, 'Inter', system-ui, sans-serif); font-weight: var(--head-w, 700); font-size: 30px; letter-spacing: -.01em; opacity: 0; transform: translateY(8px); transition: opacity .45s ease .15s, transform .45s ease .15s; }
+    #splash .word span { color: var(--pri, #0c8587); }
+    #splash.formed .word { opacity: 1; transform: none; }
+    [data-mode="dark"] #splash { background: var(--bg, #0e1418); }
+  </style>
 </head>
 <body>
   <div id="splash" role="presentation">
@@ -36,7 +54,7 @@
     (function () {
       var done, sp = document.getElementById('splash');
       window.__splash = new Promise(function (r) { done = r; });
-      var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var reduce = false; // la animación es breve y suave: se muestra siempre
       var S = 96, k = S / 64, W = Math.max(window.innerWidth || 390, 320) / k, x0 = (W - 64) / 2;
       var svg = document.getElementById('ecg'), tr = document.getElementById('ecg-trace'), m = document.getElementById('ecg-m'), dot = document.getElementById('ecg-dot'), box = document.getElementById('ecg-box');
       svg.setAttribute('viewBox', '0 0 ' + W.toFixed(1) + ' 64');
@@ -51,7 +69,8 @@
       for (x = x0 + 104; x < W - 50; x += 104) d += beat(x);
       d += 'L' + W.toFixed(1) + ' 36';
       tr.setAttribute('d', d);
-      var L = tr.getTotalLength();
+      var L; try { L = tr.getTotalLength(); } catch (e) { L = 0; }
+      if (!L) { sp.classList.add('formed'); setTimeout(done, 400); return; }
       tr.style.strokeDasharray = L; tr.style.strokeDashoffset = L;
       function finish() {
         sp.classList.add('formed');
@@ -61,9 +80,9 @@
       var dur = 1250, t0 = null;
       function step(t) {
         if (t0 === null) t0 = t;
-        var p = Math.min((t - t0) / dur, 1), len = L * p, pt = tr.getPointAtLength(len);
+        var p = Math.min((t - t0) / dur, 1), len = L * p;
         tr.style.strokeDashoffset = L - len;
-        dot.setAttribute('cx', pt.x); dot.setAttribute('cy', pt.y);
+        try { var pt = tr.getPointAtLength(len); dot.setAttribute('cx', pt.x); dot.setAttribute('cy', pt.y); } catch (e) {}
         if (p < 1) requestAnimationFrame(step); else finish();
       }
       setTimeout(function () { requestAnimationFrame(step); }, 150);
