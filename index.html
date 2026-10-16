@@ -30,7 +30,8 @@
     #splash.out { opacity: 0; visibility: hidden; }
     #ecg { width: 100vw; height: 96px; overflow: visible; }
     #ecg-trace { stroke: var(--pri, #0c8587); transition: opacity .45s ease; }
-    #ecg-dot { fill: var(--pri, #0c8587); filter: drop-shadow(0 0 4px var(--pri, #0c8587)); transition: opacity .3s; }
+    #ecg-dot { fill: var(--pri, #0c8587); filter: drop-shadow(0 0 4px var(--pri, #0c8587)); transition: opacity .3s; animation: ecg-dot-in .3s ease; }
+    @keyframes ecg-dot-in { from { opacity: 0; } to { opacity: 1; } }
     #ecg-box { fill: var(--pri, #0c8587); transform-box: fill-box; transform-origin: center; transform: scale(0); opacity: 0; transition: transform .5s cubic-bezier(.2, .9, .3, 1.2), opacity .3s; }
     #ecg-m { stroke: var(--pri, #0c8587); opacity: 0; transition: stroke .4s ease .1s; }
     #splash.formed #ecg-trace { opacity: 0; }
@@ -49,43 +50,48 @@
     <div class="word" aria-label="Meditas">Medi<span>tas</span></div>
   </div>
   <script>
-    // Animación de entrada: un trazo de ECG recorre la pantalla como en un monitor;
+    // Animación de entrada: una tira corta de ECG se dibuja a velocidad real, como en un monitor;
     // el complejo central tiene forma de “M” y queda como logo.
     (function () {
       var done, sp = document.getElementById('splash');
       window.__splash = new Promise(function (r) { done = r; });
-      var reduce = false; // la animación es breve y suave: se muestra siempre
       var S = 96, k = S / 64, W = Math.max(window.innerWidth || 390, 320) / k, x0 = (W - 64) / 2;
       var svg = document.getElementById('ecg'), tr = document.getElementById('ecg-trace'), m = document.getElementById('ecg-m'), dot = document.getElementById('ecg-dot'), box = document.getElementById('ecg-box');
       svg.setAttribute('viewBox', '0 0 ' + W.toFixed(1) + ' 64');
       box.setAttribute('x', x0.toFixed(1));
       m.setAttribute('d', 'M' + (x0 + 12) + ' 36h8l5-14 7 20 7-20 5 14h8');
-      // latido normal (onda P, QRS, onda T) y latido central en forma de M
-      function beat(x) { return 'L' + x + ' 36q4 -7 9 0L' + (x + 16) + ' 36l2 3 3-25 3 30 2-8L' + (x + 34) + ' 36q8 -11 16 0'; }
-      var d = 'M0 36', x = x0 - 104;
-      while (x - 104 > 0) x -= 104;
-      for (; x < x0 - 60; x += 104) if (x > 2) d += beat(x);
-      d += 'L' + (x0 + 1) + ' 36q5 -8 10 0L' + (x0 + 20) + ' 36l5-14 7 20 7-20 5 14L' + (x0 + 55) + ' 36q8 -12 16 0';
-      for (x = x0 + 104; x < W - 50; x += 104) d += beat(x);
-      d += 'L' + W.toFixed(1) + ' 36';
+      // Tira de ECG que va de un punto a otro: un latido normal (onda P, QRS, onda T) y después el latido con forma de M.
+      // Se dibuja como un monitor real: el trazo avanza a velocidad horizontal constante (~70 latidos por minuto),
+      // así el QRS aparece casi de golpe y las ondas P y T se ven lentas.
+      var BEAT = 86, HR = 70, v = BEAT / (60 / HR); // unidades por segundo
+      var xs = Math.max(W * 0.1, x0 - 98), xe = Math.min(W * 0.9, x0 + 84), xb = Math.max(xs + 8, x0 - 86);
+      var d = 'M' + xs + ' 36L' + xb + ' 36q4 -7 9 0L' + (xb + 16) + ' 36l2 3 3-25 3 30 2-8L' + (xb + 34) + ' 36q8 -11 16 0'
+        + 'L' + (x0 + 1) + ' 36q5 -8 10 0L' + (x0 + 20) + ' 36l5-14 7 20 7-20 5 14L' + (x0 + 55) + ' 36q8 -12 16 0L' + xe + ' 36';
       tr.setAttribute('d', d);
       var L; try { L = tr.getTotalLength(); } catch (e) { L = 0; }
       if (!L) { sp.classList.add('formed'); setTimeout(done, 400); return; }
       tr.style.strokeDasharray = L; tr.style.strokeDashoffset = L;
-      function finish() {
-        sp.classList.add('formed');
-        setTimeout(done, reduce ? 0 : 650);
+      // tabla longitud → x, para avanzar por x (como el barrido del monitor) y no por largo del trazo
+      var N = 600, LX = [], LL = [];
+      for (var i = 0; i <= N; i++) { var l = L * i / N, q = tr.getPointAtLength(l); LL.push(l); LX.push(q.x); }
+      function lenAt(x) {
+        var lo = 0, hi = N;
+        while (hi - lo > 1) { var mid = (lo + hi) >> 1; if (LX[mid] < x) lo = mid; else hi = mid; }
+        var span = LX[hi] - LX[lo], f = span > 0 ? (x - LX[lo]) / span : 1;
+        return LL[lo] + (LL[hi] - LL[lo]) * Math.max(0, Math.min(1, f));
       }
-      if (reduce || !window.requestAnimationFrame) { tr.style.strokeDashoffset = 0; finish(); return; }
-      var dur = 1250, t0 = null;
+      function finish() { sp.classList.add('formed'); setTimeout(done, 650); }
+      if (!window.requestAnimationFrame) { tr.style.strokeDashoffset = 0; finish(); return; }
+      var dur = (xe - xs) / v * 1000, t0 = null;
+      dot.setAttribute('cx', xs); dot.setAttribute('cy', 36);
       function step(t) {
         if (t0 === null) t0 = t;
-        var p = Math.min((t - t0) / dur, 1), len = L * p;
+        var p = Math.min((t - t0) / dur, 1), len = p < 1 ? lenAt(xs + (xe - xs) * p) : L;
         tr.style.strokeDashoffset = L - len;
         try { var pt = tr.getPointAtLength(len); dot.setAttribute('cx', pt.x); dot.setAttribute('cy', pt.y); } catch (e) {}
-        if (p < 1) requestAnimationFrame(step); else finish();
+        if (p < 1) requestAnimationFrame(step); else setTimeout(finish, 250);
       }
-      setTimeout(function () { requestAnimationFrame(step); }, 150);
+      setTimeout(function () { requestAnimationFrame(step); }, 350);
     })();
   </script>
   <header class="top" id="top"></header>

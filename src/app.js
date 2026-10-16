@@ -572,7 +572,7 @@ applyUI();
 function hideSplash() {
   const sp = $('#splash'); if (!sp) return;
   const out = () => { sp.classList.add('out'); setTimeout(() => sp.remove(), 500); };
-  Promise.race([window.__splash || Promise.resolve(), new Promise(r => setTimeout(r, 3500))]).then(() => setTimeout(out, 250));
+  Promise.race([window.__splash || Promise.resolve(), new Promise(r => setTimeout(r, 5000))]).then(() => setTimeout(out, 250));
 }
 
 (async () => {
