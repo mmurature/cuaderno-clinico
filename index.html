@@ -63,7 +63,7 @@
       // Tira de ECG que va de un punto a otro: un latido normal (onda P, QRS, onda T) y después el latido con forma de M.
       // Se dibuja como un monitor real: el trazo avanza a velocidad horizontal constante (~70 latidos por minuto),
       // así el QRS aparece casi de golpe y las ondas P y T se ven lentas.
-      var BEAT = 86, HR = 70, v = BEAT / (60 / HR); // unidades por segundo
+      var BEAT = 86, HR = 70, v = BEAT / (60 / HR) * 1.25; // unidades por segundo (25% más rápido que 70 lpm reales)
       var xs = Math.max(W * 0.1, x0 - 98), xe = Math.min(W * 0.9, x0 + 84), xb = Math.max(xs + 8, x0 - 86);
       var d = 'M' + xs + ' 36L' + xb + ' 36q4 -7 9 0L' + (xb + 16) + ' 36l2 3 3-25 3 30 2-8L' + (xb + 34) + ' 36q8 -11 16 0'
         + 'L' + (x0 + 1) + ' 36q5 -8 10 0L' + (x0 + 20) + ' 36l5-14 7 20 7-20 5 14L' + (x0 + 55) + ' 36q8 -12 16 0L' + xe + ' 36';
