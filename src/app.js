@@ -4,7 +4,10 @@ import * as store from './store.js';
 import * as backup from './backup.js';
 import * as sync from './sync.js';
 import { ensureTx, roman } from './taxonomy.js';
-import { initEvo, evo, EVR, evoInput, evoChange } from './evolucion.js';
+import { initEvo, evo, EVR, evoInput, evoChange } from './evo/ui.js';
+import { initEvoEditor, openEditor, bindEvoEditor } from './evo/editor.js';
+import { initPartes, viewPartes, viewParte, PR, partesInput, partesChange, bindPEditor, findP } from './partes/ui.js';
+import { initStats, viewStats, SR, bindTips } from './stats.js';
 import { initFormulas, fmv, fcalc, FMR, formulaSheetClick } from './formulas.js';
 import { ic, logo } from './icons.js';
 import { SKINS, getUI, setUI, applyUI } from './theme.js';
@@ -35,6 +38,8 @@ function parse() {
   if (a == 'ficha') return { v: 'ficha', sec: 'fichas', id: b, edit: c == 'editar', depth: 4 };
   if (a == 'repaso') return { v: 'repaso', sec: 'repaso', depth: 1 };
   if (a == 'evolucion') return { v: 'evolucion', sec: 'evolucion', depth: 1 };
+  if (a == 'partes') return { v: 'partes', sec: 'partes', depth: 1 };
+  if (a == 'parte') return { v: 'parte', sec: 'partes', id: b, depth: 2 };
   if (a == 'mas' && b) return { v: b, sec: 'mas', depth: 2 };
   if (a == 'mas') return { v: 'mas', sec: 'mas', depth: 1 };
   return { v: 'hoy', sec: 'hoy', depth: 0 };
@@ -50,6 +55,7 @@ function parentOf(r) {
   if (r.v == 'ficha') { const it = find(r.id); return it ? fichasPath(it.k, groupOf(it) || noneOf(it.k), it.s || 'General') : '#/fichas/p'; }
   if (r.v == 'fichas') return r.s != null ? fichasPath(r.k, r.g) : r.g != null ? fichasPath(r.k) : '#/hoy';
   if (r.sec == 'mas' && r.v != 'mas') return '#/mas';
+  if (r.v == 'parte') return '#/partes';
   return '#/hoy';
 }
 function back() {
@@ -104,7 +110,7 @@ function qpool(m = S.cfg.m || 'x') {
 /* =========================================================================
    Barra de navegación y barra superior
    ========================================================================= */
-const NAV = [['hoy', 'home', 'Hoy', '#/hoy'], ['fichas', 'book', 'Fichas', '#/fichas/p'], ['repaso', 'repaso', 'Repaso', '#/repaso'], ['evolucion', 'evo', 'Evolución', '#/evolucion'], ['mas', 'more', 'Más', '#/mas']];
+const NAV = [['hoy', 'home', 'Hoy', '#/hoy'], ['fichas', 'book', 'Fichas', '#/fichas/p'], ['repaso', 'repaso', 'Repaso', '#/repaso'], ['evolucion', 'evo', 'Evolución', '#/evolucion'], ['partes', 'parte', 'Partes', '#/partes'], ['mas', 'more', 'Más', '#/mas']];
 function drawNav(sec) {
   $('#nav').innerHTML = `<div class="brand">${logo('')}<span>Medi<em>tas</em></span></div>` + NAV.map(([k, i, l, h]) => `<button data-nav="${h}" class="${sec == k ? 'on' : ''}" aria-label="${l}" ${sec == k ? 'aria-current="page"' : ''}><span class="pill">${ic(i)}</span><span>${l}</span></button>`).join('');
 }
@@ -123,6 +129,8 @@ function drawTop(r) {
   }
   else if (r.v == 'repaso') title = 'Repaso';
   else if (r.v == 'evolucion') title = 'Evolución';
+  else if (r.v == 'partes') title = 'Partes quirúrgicos';
+  else if (r.v == 'parte') { left = backBtn; const P = findP(r.id); title = P && P.st == 'f' ? 'Parte finalizado' : 'Parte quirúrgico'; }
   else if (r.v == 'mas') title = 'Más';
   else { left = backBtn; title = { formulas: 'Fórmulas', estadisticas: 'Estadísticas' }[r.v] || ''; }
   $('#top').innerHTML = `${left}<h1>${title}</h1>${right}`;
@@ -146,7 +154,7 @@ function viewHoy() {
     <div class="acts">${dn ? `<button class="bt" data-nav="#/repaso">Repasar de nuevo</button>` : `<button class="bt" data-r="start" ${P.length ? '' : 'disabled'}>Empezar</button>`}</div></div>
   ${du.length ? `<div class="eyebrow">Para repasar hoy</div><div class="list">${du.map(rowFicha).join('')}</div>` : ''}
   <div class="eyebrow">Accesos rápidos</div>
-  <div class="quick"><button data-r="newf" data-k="p"><span class="ic">${ic('steth')}</span>Nueva patología</button><button data-r="newf" data-k="q"><span class="ic">${ic('scalpel')}</span>Nuevo procedimiento</button><button data-nav="#/evolucion"><span class="ic">${ic('evo')}</span>Evolución</button><button data-nav="#/mas/formulas"><span class="ic">${ic('calc')}</span>Fórmulas</button></div>
+  <div class="quick"><button data-r="newf" data-k="p"><span class="ic">${ic('steth')}</span>Nueva patología</button><button data-r="newf" data-k="q"><span class="ic">${ic('scalpel')}</span>Nuevo procedimiento</button><button data-nav="#/evolucion"><span class="ic">${ic('evo')}</span>Evolución</button><button data-nav="#/partes"><span class="ic">${ic('parte')}</span>Parte quirúrgico</button><button data-nav="#/mas/formulas"><span class="ic">${ic('calc')}</span>Fórmulas</button></div>
   <div class="eyebrow">Tu progreso</div><div class="pan">${prog('Patologías', kind('p'))}${prog('Procedimientos', kind('q'))}</div>
   ${rec.length ? `<div class="eyebrow">Últimas modificadas</div><div class="list">${rec.map(rowFicha).join('')}</div>` : ''}`;
 }
@@ -251,7 +259,7 @@ function leaveFicha(id) {
   fresh.delete(id);
 }
 function touch(it) { const t = today(); if (it.ra != t) it.ra = t; }
-const grow = t => { t.style.height = 'auto'; t.style.height = Math.max(t.scrollHeight + 2, 84) + 'px'; };
+const grow = t => { const mn = t.dataset.f != null || t.dataset.pi != null ? 84 : 44; t.style.height = 'auto'; t.style.height = Math.max(t.scrollHeight + 2, mn) + 'px'; };
 
 /* ---------- Repaso ---------- */
 function viewRepaso() {
@@ -264,7 +272,17 @@ function viewRepaso() {
   <p class="meta">Las preguntas se arman con el texto de tus fichas: hacen falta al menos 4 fichas del mismo tipo con apartados completos.</p>
   <p class="meta">Avisos: <button class="add" data-r="notif">${S.cfg.nt ? 'Activados mientras la app esté abierta' : 'Activar avisos'}</button> Para no depender de la app, poné también una alarma diaria en el celular.</p></div>
   <div class="eyebrow">Fichas para repasar hoy (${du.length})</div>${du.length ? `<div class="list">${du.map(rowFicha).join('')}</div>` : '<p class="meta" style="margin:0 4px 12px">Ninguna. Asignales una fecha de repaso dentro de cada ficha.</p>'}
+  ${studyStats()}
   <div class="eyebrow">Banco de preguntas (${S.qb.length})</div><div class="pan"><p class="meta">Pegá preguntas en JSON: <code>[{"c":"Anatomía","q":"…","o":["A","B","C","D"],"a":0,"e":"explicación","s":"fuente"}]</code>. Solo aparecen en el modo mixto. Revisalas siempre contra la fuente.</p><textarea id="qa" placeholder="Pegá el JSON acá"></textarea><button class="add" data-r="addq">Agregar al banco</button><span class="meta" id="qm"></span></div>`;
+}
+// Estadísticas de estudio (se mudaron acá: el panel de Estadísticas quedó solo para procedimientos)
+function studyStats() {
+  const P = S.items.filter(i => i.k == 'p'); if (!P.length && !Object.keys(S.cs).length) return '';
+  const sys = cnt(P, i => i.g || 'Sin capítulo'), dom = {};
+  Object.keys(sys).forEach(g => (dom[g] = Math.round(P.filter(i => (i.g || 'Sin capítulo') == g && i.st == 2).length / sys[g] * 100)));
+  const cat = {}; Object.entries(S.cs).forEach(([c, v]) => (cat[c] = Math.round(v.ok / v.n * 100)));
+  const tot = Object.values(S.hist).reduce((a, v) => a + v.n, 0), okk = Object.values(S.hist).reduce((a, v) => a + v.ok, 0);
+  return `<details class="g"><summary>Tu estudio: dominio y precisión</summary><div class="pan"><p class="meta">Dominio por capítulo</p>${bars(dom, v => v + '%', 100)}<p class="meta" style="margin-top:10px">Estado de las fichas</p>${bars(cnt(S.items, i => ST[i.st]))}<p class="meta" style="margin-top:10px">Precisión en repasos por categoría (${tot ? Math.round(okk / tot * 100) + '% global' : 'sin datos'})</p>${bars(cat, v => v + '%', 100)}</div></details>`;
 }
 function repQ() {
   const q = sess.qs[sess.i], a = sess.ans;
@@ -276,24 +294,11 @@ function repQ() {
 function viewMas() {
   const row = (attr, i, t, s) => `<button class="row" ${attr}><span class="ic">${ic(i)}</span><span class="tx"><b>${t}</b><small>${esc(s)}</small></span><span class="chev">${ic('chev', 'sm')}</span></button>`;
   const st = sync.getStatus(), ui = getUI();
-  return `<div class="eyebrow">Herramientas</div><div class="list">${row('data-nav="#/mas/formulas"', 'calc', 'Fórmulas y calculadoras', 'Ácido-base, electrolitos, fluidos, fármacos…')}${row('data-nav="#/mas/estadisticas"', 'stats', 'Estadísticas y registro quirúrgico', 'Dominio, precisión, procedimientos realizados')}</div>
+  return `<div class="eyebrow">Herramientas</div><div class="list">${row('data-nav="#/mas/formulas"', 'calc', 'Fórmulas y calculadoras', 'Ácido-base, electrolitos, fluidos, fármacos…')}${row('data-nav="#/mas/estadisticas"', 'stats', 'Estadísticas quirúrgicas', 'Tu rendimiento como residente: procedimientos, rol, urgencias')}</div>
   <div class="eyebrow">Organización</div><div class="list">${row('data-r="cls" data-k="p"', 'tree', 'Clasificación de patologías', 'Capítulos y temas')}${row('data-r="cls" data-k="q"', 'tree', 'Clasificación de procedimientos', 'Especialidades y subespecialidades')}</div>
   <div class="eyebrow">App</div><div class="list">${row('data-sheet="look"', 'palette', 'Apariencia', SKINS[ui.skin].n + ' · ' + { auto: 'automático', light: 'claro', dark: 'oscuro' }[ui.mode])}${row('data-sheet="bk"', 'save', 'Respaldo y exportación', 'Descargar, restaurar, Excel')}${row('data-sheet="acct"', 'user', 'Cuenta y sincronización', st.email || STL[st.status])}</div>
   <p class="meta" style="text-align:center;margin-top:20px">Meditas · los datos de pacientes nunca salen del dispositivo</p>`;
 }
-function viewStats() {
-  const P = S.items.filter(i => i.k == 'p'), Q = S.items.filter(i => i.k == 'q'), L = S.lg, dm = a => a.filter(i => i.st == 2).length;
-  const sys = cnt(P, i => i.g || 'Sin capítulo'), dom = {};
-  Object.keys(sys).forEach(g => dom[g] = Math.round(P.filter(i => (i.g || 'Sin capítulo') == g && i.st == 2).length / sys[g] * 100));
-  const cat = {}; Object.entries(S.cs).forEach(([c, v]) => cat[c] = Math.round(v.ok / v.n * 100));
-  const cp = L.filter(x => x.c == 'Sí').length, mo = cnt(L, x => x.d.slice(0, 7));
-  const tot = Object.values(S.hist).reduce((a, v) => a + v.n, 0), okk = Object.values(S.hist).reduce((a, v) => a + v.ok, 0);
-  return `<div class="kp"><div><b>${P.length}</b>patologías (${dm(P)} dominadas)</div><div><b>${Q.length}</b>procedimientos</div><div><b>${L.length}</b>realizados</div><div><b>${streak()}</b>días de racha</div></div>
-  <div class="pan"><h3>Estudio</h3><p class="meta">Dominio por capítulo</p>${bars(dom, v => v + '%', 100)}<p class="meta" style="margin-top:10px">Estado de las fichas</p>${bars(cnt(S.items, i => ST[i.st]))}<p class="meta" style="margin-top:10px">Precisión en repasos por categoría (${tot ? Math.round(okk / tot * 100) + '% global' : 'sin datos'})</p>${bars(cat, v => v + '%', 100)}</div>
-  <div class="pan"><h3>Registrar procedimiento realizado</h3><p class="meta">Sin datos identificables del paciente: solo procedimiento, rol y resultado.</p><div class="tl"><label class="f">Fecha<input type="date" id="lf-d" value="${today()}"></label><label class="f">Procedimiento<input id="lf-p" list="ql"></label><datalist id="ql">${Q.map(i => `<option value="${esc(i.t)}">`).join('')}</datalist><label class="f">Rol<select id="lf-r"><option>Cirujano</option><option>Ayudante</option><option>Observador</option></select></label><label class="f">Tipo<select id="lf-t"><option>Electivo</option><option>Urgencia</option></select></label><label class="f">Complicación<select id="lf-c"><option>No</option><option>Sí</option></select></label></div><div class="acts"><button class="bt" data-r="addlog">Registrar</button></div></div>
-  <div class="pan"><h3>Estadísticas quirúrgicas</h3><p class="meta">Complicaciones: ${L.length ? Math.round(cp / L.length * 100) + '% (' + cp + ' de ' + L.length + ')' : 'sin datos'}</p><p class="meta">Por rol</p>${bars(cnt(L, x => x.r))}<p class="meta" style="margin-top:10px">Electivo vs urgencia</p>${bars(cnt(L, x => x.t))}<p class="meta" style="margin-top:10px">Procedimientos más frecuentes</p>${bars(Object.fromEntries(Object.entries(cnt(L, x => x.p || 'Sin nombre')).sort((a, b) => b[1] - a[1]).slice(0, 6)))}<p class="meta" style="margin-top:10px">Por mes</p>${bars(Object.fromEntries(Object.entries(mo).sort().slice(-6)))}<p class="meta" style="margin-top:10px">Últimos registros</p>${L.slice(-5).reverse().map(x => `<div class="li"><span class="meta" style="flex:1">${x.d} · ${esc(x.p)} · ${x.r} · ${x.t}${x.c == 'Sí' ? ' · complicación' : ''}</span><button class="x" data-r="dellog" data-i="${S.lg.indexOf(x)}" aria-label="Borrar">×</button></div>`).join('')}</div>`;
-}
-
 /* =========================================================================
    Render
    ========================================================================= */
@@ -303,8 +308,8 @@ function render() {
   drawNav(r.sec); drawTop(r);
   const v = $('#view');
   v.innerHTML = r.v == 'hoy' ? viewHoy() : r.v == 'fichas' ? viewFichas(r) : r.v == 'ficha' ? viewFicha(r) : r.v == 'repaso' ? viewRepaso()
-    : r.v == 'evolucion' ? evo() : r.v == 'mas' ? viewMas() : r.v == 'formulas' ? fmv() : r.v == 'estadisticas' ? viewStats() : viewHoy();
-  v.querySelectorAll('textarea[data-f],textarea[data-pi]').forEach(grow);
+    : r.v == 'evolucion' ? evo() : r.v == 'partes' ? viewPartes() : r.v == 'parte' ? viewParte(r.id) : r.v == 'mas' ? viewMas() : r.v == 'formulas' ? fmv() : r.v == 'estadisticas' ? viewStats() : viewHoy();
+  v.querySelectorAll('textarea[data-f],textarea[data-pi],textarea[data-pst],textarea[data-pf],textarea[data-ef]').forEach(grow);
   const fab = $('#fab');
   fab.hidden = r.v != 'fichas' || !!qs;
   if (r.v == 'fichas') { fab.innerHTML = `${ic('plus')}<span>Nueva ficha</span>`; fab.dataset.k = r.k; fab.dataset.g = r.g ?? ''; fab.dataset.s = r.s ?? ''; }
@@ -391,13 +396,7 @@ const R = {
       S.qb.push(...a); save(); render(); toast(a.length + ' pregunta(s) agregadas');
     } catch { $('#qm').textContent = ' Formato inválido.'; }
   },
-  addlog() {
-    const g = i => $('#lf-' + i).value;
-    if (!g('p').trim()) return toast('Escribí el procedimiento');
-    S.lg.push({ d: g('d') || today(), p: g('p').trim(), r: g('r'), t: g('t'), c: g('c') }); save(); render(); toast('Registrado');
-  },
-  dellog(b) { S.lg.splice(+b.dataset.i, 1); save(); render(); },
-  ...EVR, ...FMR
+  ...EVR, ...FMR, ...PR, ...SR
 };
 
 /* ---------- eventos globales ---------- */
@@ -417,7 +416,8 @@ $('#view').addEventListener('input', e => {
   const t = e.target, d = t.dataset;
   if (d.q != null) { qs = t.value; $('#fl').innerHTML = fichasList(parse()); $('#fab').hidden = !!qs; return; }
   if (d.fk) return fcalc(d.fk);
-  if (d.vt) return evoInput(e);
+  if (t.tagName == 'TEXTAREA' && (d.pst != null || d.pf != null || d.ef != null)) grow(t);
+  if (evoInput(e) || partesInput(e)) return;
   const it = cur(); if (!it) return;
   if (d.f) it.f[d.f] = t.value;
   else if (d.k) it[d.k] = t.value;
@@ -430,7 +430,7 @@ $('#view').addEventListener('input', e => {
 $('#view').addEventListener('change', e => {
   const t = e.target, d = t.dataset;
   if (d.cfg) { S.cfg[d.cfg] = d.cfg == 'n' ? +t.value : t.value; save(); return; }
-  if (d.vs != null || d.gk) return evoChange(e);
+  if (evoChange(e) || partesChange(e)) return;
   const it = cur(); if (!it) return;
   if (d.ck != null) { it.c[+d.ck].d = t.checked; save(); t.closest('.ck').classList.toggle('done', t.checked); return; }
   if (d.sel) { it[d.sel] = t.value; if (d.sel != 's') it.s = ''; touch(it); save(); render(); return; }
@@ -450,22 +450,54 @@ const sheetHead = (attr = 'data-b="c"') => `<div class="eh"><button ${attr}>${ic
 $('#bk').addEventListener('click', e => { if (e.target.id == 'bk') closeSheet(); });
 
 function clsHtml() {
-  const T = ensureTx(S)[clsK], P = clsK == 'p', [L1, L2] = LV[clsK];
-  return `<div class="sheet">${sheetHead()}<h3>Clasificación de ${P ? 'patologías' : 'procedimientos'}</h3><p class="meta">${L1} › ${L2.toLowerCase()}. Agregá, quitá o reordená. Solo se pueden quitar los que no tienen fichas.</p>
-  ${Object.keys(T).map((g, gi) => `<div class="pan"><div class="li"><b style="flex:1">${P ? roman(gi) + '. ' : ''}${esc(g)}</b><button class="x" data-c="ug" data-g="${esc(g)}" aria-label="Subir">↑</button><button class="x" data-c="dg" data-g="${esc(g)}" aria-label="Quitar">×</button></div><div>${T[g].map((x, si) => `<button class="chip" data-c="ds" data-g="${esc(g)}" data-s="${esc(x)}">${P ? si + 1 + '. ' : ''}${esc(x)} ×</button>`).join('')}</div><div class="tl"><input class="sr" style="padding-left:14px;flex:1" placeholder="Nuevo ${L2.toLowerCase()}" data-cin="${esc(g)}"><button class="add" data-c="as" data-g="${esc(g)}">Agregar</button></div></div>`).join('')}
-  <div class="tl"><input class="sr" id="cg" style="padding-left:14px;flex:1" placeholder="Nuevo ${L1.toLowerCase()}"><button class="bt" data-c="ag">Agregar</button></div><p class="meta" id="cm"></p></div>`;
+  const T = ensureTx(S)[clsK], P = clsK == 'p', [L1, L2] = LV[clsK], G = Object.keys(T);
+  const n = (g, t) => S.items.filter(i => i.k == clsK && groupOf(i) == g && (t == null || i.s == t)).length;
+  return `<div class="sheet">${sheetHead()}<h3>Clasificación de ${P ? 'patologías' : 'procedimientos'}</h3><p class="meta">${L1} › ${L2.toLowerCase()}. Renombrá tocando el nombre, reordená con las flechas, agregá o quitá. Al renombrar, las fichas se mueven solas. Solo se pueden quitar los que no tienen fichas.</p>
+  <div class="acts"><button class="add" data-c="clean">Quitar todo lo que no tiene fichas (empezar de cero)</button></div>
+  ${G.map((g, gi) => `<div class="pan"><div class="li">${P ? `<span class="meta">${roman(gi)}.</span>` : ''}<input type="text" class="rn" data-crg="${esc(g)}" value="${esc(g)}" autocomplete="off" aria-label="Nombre del ${L1.toLowerCase()}"><small class="meta">${n(g)}</small><button class="x" data-c="ug" data-g="${esc(g)}" aria-label="Subir">↑</button><button class="x" data-c="dng" data-g="${esc(g)}" aria-label="Bajar">↓</button><button class="x" data-c="dg" data-g="${esc(g)}" aria-label="Quitar">×</button></div>
+    ${T[g].map((x, si) => `<div class="li sub2">${P ? `<span class="meta">${si + 1}.</span>` : ''}<input type="text" class="rn" data-crs="${esc(x)}" data-g="${esc(g)}" value="${esc(x)}" autocomplete="off" aria-label="Nombre del ${L2.toLowerCase()}"><small class="meta">${n(g, x)}</small><button class="x" data-c="us" data-g="${esc(g)}" data-s="${esc(x)}" aria-label="Subir">↑</button><button class="x" data-c="dns" data-g="${esc(g)}" data-s="${esc(x)}" aria-label="Bajar">↓</button><button class="x" data-c="ds" data-g="${esc(g)}" data-s="${esc(x)}" aria-label="Quitar">×</button></div>`).join('')}
+    <div class="tl"><input class="sr" style="padding-left:14px;flex:1" placeholder="Nuevo ${L2.toLowerCase()}" data-cin="${esc(g)}" autocomplete="off" autocorrect="off" spellcheck="false"><button class="add" data-c="as" data-g="${esc(g)}">Agregar</button></div></div>`).join('')}
+  <div class="tl"><input class="sr" id="cg" style="padding-left:14px;flex:1" placeholder="Nuevo ${L1.toLowerCase()}" autocomplete="off" autocorrect="off" spellcheck="false"><button class="bt" data-c="ag">Agregar</button></div><p class="meta" id="cm"></p></div>`;
 }
+const clsRedraw = m => { const bk = $('#bk'), sc = bk.scrollTop; bk.innerHTML = clsHtml(); bk.scrollTop = sc; $('#cm').textContent = m || ''; };
 $('#bk').addEventListener('click', e => {
   if (formulaSheetClick(e)) return;
+  if ($('#bk').dataset.view != 'cls') return;
   const b = e.target.closest('[data-c]'); if (!b) return;
   const T = ensureTx(S)[clsK], d = b.dataset, c = d.c, use = f => S.items.some(i => i.k == clsK && f(i));
+  const reorder = ks => { S.tx[clsK] = Object.fromEntries(ks.map(k => [k, T[k]])); };
   let m = '';
-  if (c == 'ag') { const v = $('#cg').value.trim(); if (v && !T[v]) T[v] = []; }
+  if (c == 'ag') { const v = $('#cg').value.trim(); if (v && !T[v]) T[v] = []; else if (v) m = 'Ya existe.'; }
   if (c == 'as') { const v = document.querySelector(`[data-cin="${CSS.escape(d.g)}"]`).value.trim(); if (v && !T[d.g].includes(v)) T[d.g].push(v); }
   if (c == 'dg') { if (use(i => groupOf(i) == d.g)) m = 'No se puede quitar: tiene fichas.'; else delete T[d.g]; }
   if (c == 'ds') { if (use(i => groupOf(i) == d.g && i.s == d.s)) m = 'No se puede quitar: tiene fichas.'; else T[d.g] = T[d.g].filter(x => x != d.s); }
-  if (c == 'ug') { const ks = Object.keys(T), p = ks.indexOf(d.g); if (p > 0) { [ks[p - 1], ks[p]] = [ks[p], ks[p - 1]]; S.tx[clsK] = Object.fromEntries(ks.map(k => [k, T[k]])); } }
-  save(); const bk = $('#bk'), sc = bk.scrollTop; bk.innerHTML = clsHtml(); bk.scrollTop = sc; $('#cm').textContent = m;
+  if (c == 'ug' || c == 'dng') { const ks = Object.keys(T), p = ks.indexOf(d.g), q = p + (c == 'ug' ? -1 : 1); if (q >= 0 && q < ks.length) { [ks[q], ks[p]] = [ks[p], ks[q]]; reorder(ks); } }
+  if (c == 'us' || c == 'dns') { const a = T[d.g], p = a.indexOf(d.s), q = p + (c == 'us' ? -1 : 1); if (q >= 0 && q < a.length) [a[q], a[p]] = [a[p], a[q]]; }
+  if (c == 'clean') {
+    if (!b.dataset.arm) { b.dataset.arm = 1; b.textContent = '¿Seguro? Se quitan todos los vacíos. Tocá otra vez'; return; }
+    Object.keys(T).forEach(g => { T[g] = T[g].filter(x => use(i => groupOf(i) == g && i.s == x)); if (!T[g].length && !use(i => groupOf(i) == g)) delete T[g]; });
+    m = 'Listo: quedaron solo los que tienen fichas.';
+  }
+  save(); clsRedraw(m);
+});
+// Renombrar (al salir del campo): mueve las fichas al nombre nuevo
+$('#bk').addEventListener('change', e => {
+  if ($('#bk').dataset.view != 'cls') return;
+  const t = e.target, d = t.dataset, T = ensureTx(S)[clsK], v = t.value.trim(), G = clsK == 'q' ? 'e' : 'g';
+  if (d.crg != null) {
+    const old = d.crg; if (!v || v == old) return clsRedraw();
+    if (T[v]) return clsRedraw('Ya existe un ' + LV[clsK][0].toLowerCase() + ' con ese nombre.');
+    S.tx[clsK] = Object.fromEntries(Object.keys(T).map(k => [k == old ? v : k, T[k]]));
+    S.items.forEach(i => { if (i.k == clsK && i[G] == old) i[G] = v; });
+    save(); clsRedraw('Renombrado.');
+  }
+  if (d.crs != null) {
+    const old = d.crs, g = d.g; if (!v || v == old) return clsRedraw();
+    if (T[g].includes(v)) return clsRedraw('Ya existe con ese nombre.');
+    T[g] = T[g].map(x => (x == old ? v : x));
+    S.items.forEach(i => { if (i.k == clsK && i[G] == g && i.s == old) i.s = v; });
+    save(); clsRedraw('Renombrado.');
+  }
 });
 
 function lookHtml() {
@@ -564,7 +596,11 @@ setInterval(() => {
   }
 }, 30000);
 
-initEvo({ getS: () => S, save, render });
+initEvo({ getS: () => S, save, render, toast, openEditor: (m, id) => openEditor(m, id) });
+initEvoEditor({ getS: () => S, save, toast, openSheet, close: () => closeSheet() });
+initPartes({ getS: () => S, save, render, toast, go, openSheet, close: () => closeSheet() });
+initStats({ getS: () => S, save, render, toast });
+bindEvoEditor($('#bk')); bindPEditor($('#bk')); bindTips();
 initFormulas({ getS: () => S, save, render, toast, op, openSheet, close: () => closeSheet() });
 applyUI();
 

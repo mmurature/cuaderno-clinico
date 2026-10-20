@@ -8,8 +8,8 @@ const SB_URL = import.meta.env.VITE_SUPABASE_URL, SB_KEY = import.meta.env.VITE_
 export const enabled = !!(SB_URL && SB_KEY);
 
 // Claves que nunca salen del dispositivo
-// ev = borradores de evolución (hallazgos de examen): se quedan en el dispositivo
-const LOCAL_ONLY = ['meta', 'vault', 'ev'];
+// ev/evh = evolución en curso y evaluaciones guardadas; pq = partes quirúrgicos: datos de pacientes, se quedan en el dispositivo
+const LOCAL_ONLY = ['meta', 'vault', 'ev', 'evh', 'pq'];
 const LOCAL_CFG = ['nt', 'last'];
 
 let sb = null, user = null, status = enabled ? 'out' : 'off', lastError = '', busy = false, again = false, timer = null;
@@ -58,7 +58,7 @@ function fromRemote(row, S) {
   const n = def(migrateV1(JSON.parse(JSON.stringify(row.data))));
   LOCAL_CFG.forEach(k => { if (S.cfg[k] !== undefined) n.cfg[k] = S.cfg[k]; });
   if (S.vault) n.vault = S.vault;
-  if (S.ev) n.ev = S.ev;
+  ['ev', 'evh', 'pq'].forEach(k => { if (S[k]) n[k] = S[k]; });
   n.meta = { ...S.meta, uid: user.id, remoteAt: Date.parse(row.updated_at), updatedAt: S.meta.updatedAt, syncedLocal: S.meta.updatedAt };
   return n;
 }

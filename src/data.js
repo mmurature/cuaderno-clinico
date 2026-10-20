@@ -46,7 +46,7 @@ export function seed() {
 
 // Completa un estado con todos los campos esperados (sirve para datos viejos o importados).
 export const def = o => Object.assign(
-  { items: [], lg: [], qb: [], rv: {}, cs: {}, hist: {}, ev: {}, meta: { updatedAt: 0, syncedAt: 0 } },
+  { items: [], lg: [], qb: [], rv: {}, cs: {}, hist: {}, ev: {}, evh: [], evt: {}, pq: [], pqt: {}, meta: { updatedAt: 0, syncedAt: 0 } },
   o,
   { cfg: Object.assign({ t: '20:00', n: 5, m: 'x' }, o && o.cfg), meta: Object.assign({ updatedAt: 0, syncedAt: 0 }, o && o.meta) }
 );
