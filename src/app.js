@@ -1,5 +1,5 @@
 import './styles.css';
-import { toView, plain, sanitize, toEdit, toolbar, exec, saveSel } from './rich.js';
+import { toView, plain, sanitize, pack, toEdit, toolbar, exec, saveSel } from './rich.js';
 import { ST, IV, FL, LV, fieldsOf, baseFields, groupOf, mk, uid, hue, esc, shuf, today, addD, cnt, def, migrateV1 } from './data.js';
 import * as store from './store.js';
 import * as backup from './backup.js';
@@ -440,7 +440,7 @@ const R = {
 };
 
 /* ---------- texto enriquecido ---------- */
-function onRich(ed) { const it = cur(); if (!it) return; it.f[ed.dataset.rf] = sanitize(ed.innerHTML); touch(it); save(); }
+function onRich(ed) { const it = cur(); if (!it) return; it.f[ed.dataset.rf] = pack(ed.innerHTML); touch(it); save(); }
 $('#view').addEventListener('mousedown', e => { if (e.target.closest('.rtb button')) e.preventDefault(); });
 $('#view').addEventListener('pointerdown', e => { if (e.target.closest('.rtb button')) e.preventDefault(); });
 document.addEventListener('selectionchange', () => { const a = document.activeElement; if (a && a.dataset && a.dataset.rf != null) saveSel(a); });

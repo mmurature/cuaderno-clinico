@@ -2,7 +2,10 @@
 // Se guarda como HTML limpio (lista blanca). Las fichas viejas en texto plano se siguen leyendo y se convierten al editarlas.
 import { esc } from './data.js';
 
-export const isHtml = v => /^\s*<(p|div|ul|ol|h[1-6]|b|i|u|s|strong|em|span|br|font|li)[\s>/]/i.test(v || '');
+// Un texto enriquecido empieza con la marca <!--rt-->. También se reconoce el HTML sin marca (el editor guardaba la primera línea sin etiqueta).
+export const RT = '<!--rt-->';
+export const isHtml = v => { v = v || ''; return v.startsWith(RT) || /^\s*<(p|div|ul|ol|h[1-6]|b|i|u|s|strong|em|span|br|font|li)[\s>/]/i.test(v) || /<\/(div|span|li|ul|ol|b|u|i|p)>|<br\s*\/?>/i.test(v); };
+export const pack = html => RT + sanitize(html);
 const TAGS = new Set(['P', 'DIV', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'UL', 'OL', 'LI', 'SPAN', 'H3', 'H4', 'SUB', 'SUP']);
 export const FONTS = [['', 'Fuente'], ['sans', 'Sans'], ['serif', 'Serif'], ['mono', 'Mono']];
 const FONT_CSS = { sans: 'system-ui, sans-serif', serif: 'Georgia, serif', mono: 'ui-monospace, Menlo, monospace' };
