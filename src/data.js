@@ -8,7 +8,15 @@ export const QF = [['pre', 'Prequirúrgico'], ['pos', 'Posicionamiento del pacie
 // Apartados que se usan para generar preguntas automáticas
 export const FL = { def: 'definición', eti: 'etiología', epi: 'epidemiología', fis: 'fisiopatología', cli: 'cuadro clínico', dx: 'diagnóstico', tx: 'tratamiento', pre: 'prequirúrgico', pas: 'paso a paso', com: 'complicaciones' };
 
-export const fieldsOf = it => (it.k == 'q' ? QF : PF);
+// Recuadros de una ficha: los de la plantilla menos los quitados (it.fx.hide, sin borrar su texto) más los propios (it.fx.x).
+export const baseFields = it => (it.k == 'q' ? QF : PF);
+export const fieldsOf = it => {
+  const fx = it.fx || {}, hide = fx.hide || [];
+  const base = baseFields(it).filter(([k]) => !hide.includes(k));
+  const pos = base.findIndex(([k]) => k[0] == '_');
+  const extra = (fx.x || []).map(e => [e.k, e.l]);
+  return pos < 0 ? [...base, ...extra] : [...base.slice(0, pos), ...extra, ...base.slice(pos)];
+};
 // Nombres de los niveles de clasificación
 export const LV = { p: ['Capítulo', 'Tema'], q: ['Especialidad', 'Subespecialidad'] };
 export const groupOf = i => (i.k == 'q' ? i.e : i.g);

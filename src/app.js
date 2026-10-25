@@ -1,5 +1,6 @@
 import './styles.css';
-import { ST, IV, FL, LV, fieldsOf, groupOf, mk, hue, esc, shuf, today, addD, cnt, def, migrateV1 } from './data.js';
+import { toView, plain, sanitize, toEdit, toolbar, exec, saveSel } from './rich.js';
+import { ST, IV, FL, LV, fieldsOf, baseFields, groupOf, mk, uid, hue, esc, shuf, today, addD, cnt, def, migrateV1 } from './data.js';
 import * as store from './store.js';
 import * as backup from './backup.js';
 import * as sync from './sync.js';
@@ -9,6 +10,8 @@ import { initEvoEditor, openEditor, bindEvoEditor } from './evo/editor.js';
 import { initPartes, viewPartes, viewParte, PR, partesInput, partesChange, bindPEditor, findP } from './partes/ui.js';
 import { initStats, viewStats, SR, bindTips } from './stats.js';
 import { initFormulas, fmv, fcalc, FMR, formulaSheetClick } from './formulas.js';
+import { initCalc, viewCalc, CR, calcInput } from './calc/ui.js';
+import { tool as calcTool, MODS as CMODS, CATS as CCATS } from './calc/lib/index.js';
 import { ic, logo } from './icons.js';
 import { SKINS, getUI, setUI, applyUI } from './theme.js';
 
@@ -34,14 +37,22 @@ const enc = encodeURIComponent, dec = s => { try { return decodeURIComponent(s);
 function parse() {
   const p = (location.hash.replace(/^#\/?/, '') || 'hoy').split('/').map(dec);
   const [a, b, c, d] = p;
-  if (a == 'fichas') return { v: 'fichas', sec: 'fichas', k: b == 'q' ? 'q' : 'p', g: c ?? null, s: d ?? null, depth: 1 + (c != null) + (d != null) };
-  if (a == 'ficha') return { v: 'ficha', sec: 'fichas', id: b, edit: c == 'editar', depth: 4 };
+  if (a == 'fichas') return { v: 'fichas', sec: b == 'q' ? 'proc' : 'pat', k: b == 'q' ? 'q' : 'p', g: c ?? null, s: d ?? null, depth: 1 + (c != null) + (d != null) };
+  if (a == 'ficha') return { v: 'ficha', sec: (find(b) || {}).k == 'q' ? 'proc' : 'pat', id: b, edit: c == 'editar', depth: 4 };
   if (a == 'repaso') return { v: 'repaso', sec: 'repaso', depth: 1 };
-  if (a == 'evolucion') return { v: 'evolucion', sec: 'evolucion', depth: 1 };
-  if (a == 'partes') return { v: 'partes', sec: 'partes', depth: 1 };
+  if (a == 'evolucion') return { v: 'evolucion', sec: 'evolucion', cat: b ?? null, depth: 1 + (b != null) };
+  if (a == 'partes') return { v: 'partes', sec: 'partes', sp: b ?? null, cat: c ?? null, depth: 1 + (b != null) + (c != null) };
   if (a == 'parte') return { v: 'parte', sec: 'partes', id: b, depth: 2 };
-  if (a == 'mas' && b) return { v: b, sec: 'mas', depth: 2 };
-  if (a == 'mas') return { v: 'mas', sec: 'mas', depth: 1 };
+  if (a == 'formulas' || (a == 'mas' && b == 'formulas')) {
+    const q = a == 'formulas' ? [b, c] : [];
+    if (q[0] == 't') return { v: 'formulas', sec: 'formulas', t: q[1], depth: 4 };
+    if (q[0] == 'mias') return { v: 'formulas', sec: 'formulas', mias: true, depth: 2 };
+    if (q[0] == 'f' || q[0] == 's') return { v: 'formulas', sec: 'formulas', m: q[0], c: q[1] ?? null, depth: 2 + (q[1] != null) };
+    return { v: 'formulas', sec: 'formulas', depth: 1 };
+  }
+  if (a == 'estadisticas' || (a == 'mas' && b == 'estadisticas')) return { v: 'estadisticas', sec: 'stats', depth: 1 };
+  if (a == 'mas' && b) return { v: b, sec: 'config', depth: 2 };
+  if (a == 'mas' || a == 'config' || a == 'configuracion') return { v: 'mas', sec: 'config', depth: 1 };
   return { v: 'hoy', sec: 'hoy', depth: 0 };
 }
 const go = (h, replace = false) => {
@@ -54,7 +65,11 @@ const fichasPath = (k, g, s) => '#/fichas/' + k + (g != null ? '/' + enc(g) : ''
 function parentOf(r) {
   if (r.v == 'ficha') { const it = find(r.id); return it ? fichasPath(it.k, groupOf(it) || noneOf(it.k), it.s || 'General') : '#/fichas/p'; }
   if (r.v == 'fichas') return r.s != null ? fichasPath(r.k, r.g) : r.g != null ? fichasPath(r.k) : '#/hoy';
-  if (r.sec == 'mas' && r.v != 'mas') return '#/mas';
+  if (r.v == 'formulas') { if (r.t) { const t = calcTool(r.t); return t ? '#/formulas/' + t.m + '/' + t.cat : '#/formulas'; } return r.c ? '#/formulas/' + r.m : r.m || r.mias ? '#/formulas' : '#/hoy'; }
+  if (r.v == 'estadisticas') return '#/hoy';
+  if (r.v == 'evolucion') return r.cat != null ? '#/evolucion' : '#/hoy';
+  if (r.sec == 'config' && r.v != 'mas') return '#/mas';
+  if (r.v == 'partes') return r.cat != null ? '#/partes/' + enc(r.sp) : r.sp != null ? '#/partes' : '#/hoy';
   if (r.v == 'parte') return '#/partes';
   return '#/hoy';
 }
@@ -93,14 +108,14 @@ function qpool(m = S.cfg.m || 'x') {
     const A = S.items.filter(i => i.k == k && i.t.trim());
     if (A.length < 4) return;
     A.forEach(i => Object.keys(FL).forEach(f => {
-      const v = (i.f[f] || '').trim(); if (v.length < 25) return;
+      const v = plain(i.f[f]).trim(); if (v.length < 25) return;
       const o = shuf([i, ...shuf(A.filter(x => x != i)).slice(0, 3)]);
       out.push({ key: `a:${i.id}:${f}`, c: groupOf(i) || 'Fichas', q: `¿A qué ${k == 'p' ? 'patología' : 'procedimiento'} corresponde este texto de «${FL[f]}»?\n“${v.slice(0, 300)}”`, o: o.map(x => x.t), a: o.indexOf(i), s: 'Tu ficha: ' + i.t });
-      const B = A.filter(x => x != i && (x.f[f] || '').trim().length >= 25);
+      const B = A.filter(x => x != i && plain(x.f[f]).trim().length >= 25);
       if (B.length >= 3) {
         const cut = t => t.trim().slice(0, 220) + (t.trim().length > 220 ? '…' : '');
         const o2 = shuf([i, ...shuf(B).slice(0, 3)]);
-        out.push({ key: `b:${i.id}:${f}`, c: groupOf(i) || 'Fichas', q: `${i.t}: ¿cuál es su ${FL[f]}?`, o: o2.map(x => cut(x.f[f])), a: o2.indexOf(i), s: 'Tu ficha: ' + i.t });
+        out.push({ key: `b:${i.id}:${f}`, c: groupOf(i) || 'Fichas', q: `${i.t}: ¿cuál es su ${FL[f]}?`, o: o2.map(x => cut(plain(x.f[f]))), a: o2.indexOf(i), s: 'Tu ficha: ' + i.t });
       }
     }));
   });
@@ -110,9 +125,12 @@ function qpool(m = S.cfg.m || 'x') {
 /* =========================================================================
    Barra de navegación y barra superior
    ========================================================================= */
-const NAV = [['hoy', 'home', 'Hoy', '#/hoy'], ['fichas', 'book', 'Fichas', '#/fichas/p'], ['repaso', 'repaso', 'Repaso', '#/repaso'], ['evolucion', 'evo', 'Evolución', '#/evolucion'], ['partes', 'parte', 'Partes', '#/partes'], ['mas', 'more', 'Más', '#/mas']];
+// Nueve accesos directos, en este orden (sin menú «Más»). La ruta guardada en cada uno es la entrada principal de su sección.
+const NAV = [['hoy', 'home', 'Hoy', '#/hoy'], ['pat', 'steth', 'Patologías', '#/fichas/p'], ['proc', 'scalpel', 'Procedimientos', '#/fichas/q'], ['evolucion', 'evo', 'Evolución', '#/evolucion'], ['partes', 'parte', 'Partes quirúrgicos', '#/partes'], ['formulas', 'calc', 'Fórmulas y Scores', '#/formulas'], ['stats', 'stats', 'Estadísticas', '#/estadisticas'], ['repaso', 'repaso', 'Repaso', '#/repaso'], ['config', 'gear', 'Configuración', '#/configuracion']];
 function drawNav(sec) {
   $('#nav').innerHTML = `<div class="brand">${logo('')}<span>Medi<em>tas</em></span></div>` + NAV.map(([k, i, l, h]) => `<button data-nav="${h}" class="${sec == k ? 'on' : ''}" aria-label="${l}" ${sec == k ? 'aria-current="page"' : ''}><span class="pill">${ic(i)}</span><span>${l}</span></button>`).join('');
+  const on = $('#nav .on'), nv = $('#nav');
+  if (on && nv.scrollWidth > nv.clientWidth && nv.scrollHeight <= nv.clientHeight + 2) nv.scrollTo({ left: on.offsetLeft - (nv.clientWidth - on.offsetWidth) / 2, behavior: 'auto' });
 }
 const SHORT = { off: 'Local', out: 'Entrar', ok: 'Sync', busy: 'Sync…', err: 'Error', offline: 'Offline' };
 const STL = { off: 'Solo local', out: 'Iniciar sesión', ok: 'Sincronizado', busy: 'Sincronizando…', err: 'Error de sync', offline: 'Sin conexión' };
@@ -122,17 +140,19 @@ function drawTop(r) {
   let title = '', left = '', right = syncBtn();
   const backBtn = `<button class="ib" data-back aria-label="Volver">${ic('back')}</button>`;
   if (r.v == 'hoy') title = `${logo()}<span>Medi<em>tas</em></span>`;
-  else if (r.v == 'fichas') { title = r.depth > 1 ? (r.s != null ? esc(r.s) : esc(groupLabel(r.k, r.g))) : 'Fichas'; if (r.depth > 1) left = backBtn; }
+  else if (r.v == 'fichas') { title = r.depth > 1 ? (r.s != null ? esc(r.s) : esc(groupLabel(r.k, r.g))) : r.k == 'q' ? 'Procedimientos' : 'Patologías'; if (r.depth > 1) left = backBtn; }
   else if (r.v == 'ficha') {
     const it = find(r.id); left = backBtn;
     right = it ? (r.edit ? `<button class="ib txt" data-r="mode" data-v="read">${ic('check', 'sm')} Listo</button>` : `<button class="ib txt" data-r="mode" data-v="edit">${ic('edit', 'sm')} Editar</button>`) : '';
   }
   else if (r.v == 'repaso') title = 'Repaso';
-  else if (r.v == 'evolucion') title = 'Evolución';
-  else if (r.v == 'partes') title = 'Partes quirúrgicos';
+  else if (r.v == 'evolucion') { title = r.cat != null ? esc(r.cat) : 'Evolución'; if (r.cat != null) left = backBtn; }
+  else if (r.v == 'partes') { title = r.cat != null ? esc(r.cat) : r.sp != null ? esc(r.sp) : 'Partes quirúrgicos'; if (r.sp != null) left = backBtn; }
   else if (r.v == 'parte') { left = backBtn; const P = findP(r.id); title = P && P.st == 'f' ? 'Parte finalizado' : 'Parte quirúrgico'; }
-  else if (r.v == 'mas') title = 'Más';
-  else { left = backBtn; title = { formulas: 'Fórmulas', estadisticas: 'Estadísticas' }[r.v] || ''; }
+  else if (r.v == 'mas') title = 'Configuración';
+  else if (r.v == 'estadisticas') title = 'Estadísticas';
+  else if (r.v == 'formulas' && !r.t && !r.mias && !r.m) title = 'Fórmulas y Scores';
+  else { left = backBtn; title = r.v == 'formulas' ? (r.t ? (calcTool(r.t) || {}).sig || 'Herramienta' : r.mias ? 'Mis fórmulas' : r.c ? esc((CCATS[r.m] || {})[r.c] || r.c) : r.m ? CMODS[r.m] : 'Fórmulas y Scores') : { estadisticas: 'Estadísticas' }[r.v] || ''; }
   $('#top').innerHTML = `${left}<h1>${title}</h1>${right}`;
 }
 
@@ -154,14 +174,14 @@ function viewHoy() {
     <div class="acts">${dn ? `<button class="bt" data-nav="#/repaso">Repasar de nuevo</button>` : `<button class="bt" data-r="start" ${P.length ? '' : 'disabled'}>Empezar</button>`}</div></div>
   ${du.length ? `<div class="eyebrow">Para repasar hoy</div><div class="list">${du.map(rowFicha).join('')}</div>` : ''}
   <div class="eyebrow">Accesos rápidos</div>
-  <div class="quick"><button data-r="newf" data-k="p"><span class="ic">${ic('steth')}</span>Nueva patología</button><button data-r="newf" data-k="q"><span class="ic">${ic('scalpel')}</span>Nuevo procedimiento</button><button data-nav="#/evolucion"><span class="ic">${ic('evo')}</span>Evolución</button><button data-nav="#/partes"><span class="ic">${ic('parte')}</span>Parte quirúrgico</button><button data-nav="#/mas/formulas"><span class="ic">${ic('calc')}</span>Fórmulas</button></div>
+  <div class="quick"><button data-r="newf" data-k="p"><span class="ic">${ic('steth')}</span>Nueva patología</button><button data-r="newf" data-k="q"><span class="ic">${ic('scalpel')}</span>Nuevo procedimiento</button><button data-nav="#/evolucion"><span class="ic">${ic('evo')}</span>Evolución</button><button data-nav="#/partes"><span class="ic">${ic('parte')}</span>Parte quirúrgico</button><button data-nav="#/formulas"><span class="ic">${ic('calc')}</span>Fórmulas y Scores</button></div>
   <div class="eyebrow">Tu progreso</div><div class="pan">${prog('Patologías', kind('p'))}${prog('Procedimientos', kind('q'))}</div>
   ${rec.length ? `<div class="eyebrow">Últimas modificadas</div><div class="list">${rec.map(rowFicha).join('')}</div>` : ''}`;
 }
 
 /* ---------- Fichas por niveles ---------- */
 function card(i) {
-  const F = fieldsOf(i).filter(([k]) => k[0] != '_'), n = F.filter(([k]) => (i.f[k] || '').trim()).length, du = i.nx && i.nx <= today();
+  const F = fieldsOf(i).filter(([k]) => k[0] != '_'), n = F.filter(([k]) => plain(i.f[k]).trim()).length, du = i.nx && i.nx <= today();
   return `<article class="card" style="--h:${hue(groupOf(i))}" data-open="${i.id}"><div class="top2"><span class="tag" style="--h:${hue(groupOf(i))}">${esc(i.s || 'General')}</span><span class="st s${i.st}">${ST[i.st]}</span></div><h3>${esc(i.t || 'Sin título')}</h3><div class="meta">${n}/${F.length} apartados${du ? ' · <span class="due">Repasar hoy</span>' : ''}</div></article>`;
 }
 function groupsOf(k) {
@@ -180,7 +200,7 @@ function viewFichas(r) {
 function fichasList(r) {
   const T = ensureTx(S)[r.k], [, L2] = LV[r.k], none = noneOf(r.k), hide = !!pref.hide;
   if (qs && r.depth == 1) {
-    const ql = qs.toLowerCase(), res = S.items.filter(i => i.k == r.k && (i.t + ' ' + i.g + ' ' + i.s + ' ' + i.e + ' ' + Object.values(i.f).join(' ')).toLowerCase().includes(ql));
+    const ql = qs.toLowerCase(), res = S.items.filter(i => i.k == r.k && (i.t + ' ' + i.g + ' ' + i.s + ' ' + i.e + ' ' + Object.values(i.f).map(plain).join(' ')).toLowerCase().includes(ql));
     return res.length ? `<p class="meta" style="margin:0 2px 8px">${res.length} resultado(s)</p><div class="list">${res.map(rowFicha).join('')}</div>` : `<div class="empty">${ic('search')}<p>Nada coincide con “${esc(qs)}”.</p></div>`;
   }
   if (r.g == null) {
@@ -212,13 +232,13 @@ function viewFicha(r) {
   return `<div class="${r.edit ? 'ed' : ''}" id="fwrap">${r.edit ? fichaEdit(it, seg) : fichaRead(it, G, seg, metaLine)}</div>`;
 }
 function fichaRead(it, G, seg, metaLine) {
-  const F = fieldsOf(it), has = k => (k == '_c' ? it.c.length : k == '_p' ? it.pr.length : (it.f[k] || '').trim());
+  const F = fieldsOf(it), has = k => (k == '_c' ? it.c.length : k == '_p' ? it.pr.length : plain(it.f[k]).trim());
   const filled = F.filter(([k]) => has(k));
   const sec = filled.map(([k, l]) => {
     let b;
     if (k == '_c') b = it.c.map((c, i) => `<label class="ck${c.d ? ' done' : ''}"><input type="checkbox" data-ck="${i}" ${c.d ? 'checked' : ''}><span>${esc(c.t || 'Ítem')}</span></label>`).join('');
     else if (k == '_p') b = it.pr.map(p => `<p><b>${esc(p.m || 'Médico')}:</b> ${esc(p.t)}</p>`).join('');
-    else b = md(it.f[k]);
+    else b = toView(it.f[k]);
     return `<section id="s-${k}"><h4>${l}</h4>${b}</section>`;
   }).join('');
   const rel = it.l.map(find).filter(Boolean);
@@ -229,6 +249,12 @@ function fichaRead(it, G, seg, metaLine) {
   ${filled.length ? `<div class="rd">${sec}</div>` : `<div class="empty">${ic('edit')}<p>Esta ficha está vacía.</p><button class="bt" data-r="mode" data-v="edit">Completar ficha</button></div>`}
   ${rel.length ? `<div class="eyebrow">Fichas relacionadas</div><div>${rel.map(x => `<button class="chip" data-open="${x.id}">${esc(x.t)}</button>`).join('')}</div>` : ''}`;
 }
+const boxAdder = it => {
+  const hid = baseFields(it).filter(([k]) => ((it.fx || {}).hide || []).includes(k));
+  return `<section class="boxadd"><h4>Recuadros</h4><p class="meta">Quitá los que no uses o sumá los tuyos. Al quitar uno de la plantilla su texto se conserva y vuelve si lo agregás de nuevo.</p>
+  ${hid.length ? `<div class="chips">${hid.map(([k, l]) => `<button class="chip" data-r="rbadd" data-k="${k}">+ ${esc(l)}</button>`).join('')}</div>` : ''}
+  <div class="tl"><label class="f" style="flex:2">Nuevo recuadro propio<input id="rbn" placeholder="Ej.: Escalas y scores, Casos clínicos…" autocomplete="off"></label><button class="bt sec" data-r="rbnew">Agregar</button></div></section>`;
+};
 function fichaEdit(it, seg) {
   const T = ensureTx(S)[it.k], G = it.k == 'q' ? 'e' : 'g', [L1, L2] = LV[it.k], gv = it[G] || '';
   const gs = [...new Set([...Object.keys(T), ...S.items.filter(x => x.k == it.k && x[G]).map(x => x[G])])];
@@ -237,9 +263,11 @@ function fichaEdit(it, seg) {
     let b;
     if (k == '_c') b = it.c.map((c, i) => `<div class="li"><input type="checkbox" data-ci="${i}" ${c.d ? 'checked' : ''} aria-label="Hecho"><input type="text" data-ci="${i}" value="${esc(c.t)}" placeholder="Ítem a preparar"><button class="x" data-r="xc" data-i="${i}" aria-label="Quitar">×</button></div>`).join('') + `<button class="add" data-r="ac">${ic('plus', 'sm')} Ítem</button>`;
     else if (k == '_p') b = it.pr.map((p, i) => `<div class="pi"><div class="li"><input data-pi="${i}" data-pk="m" value="${esc(p.m)}" placeholder="Nombre del médico"><button class="x" data-r="xp" data-i="${i}" aria-label="Quitar">×</button></div><textarea data-pi="${i}" data-pk="t" placeholder="Instrumental, suturas, posición…">${esc(p.t)}</textarea></div>`).join('') + `<button class="add" data-r="ap">${ic('plus', 'sm')} Médico</button>`;
-    else b = `<textarea data-f="${k}" placeholder="Escribí acá… (las líneas que empiezan con “- ” se muestran como lista)">${esc(it.f[k])}</textarea>`;
-    return `<section><h4>${l}</h4>${b}</section>`;
-  }).join('');
+    else b = `${toolbar(k)}<div class="rte" contenteditable="true" role="textbox" aria-multiline="true" aria-label="${esc(l)}" data-rf="${k}" data-ph="Escribí acá…">${toEdit(it.f[k])}</div>`;
+    const custom = k[0] == 'x', empty = k == '_c' ? !it.c.length : k == '_p' ? !it.pr.length : !plain(it.f[k]).trim();
+    const hd = custom ? `<input class="rtt" data-rt="${k}" value="${esc(l)}" aria-label="Título del recuadro">` : `<h4>${l}</h4>`;
+    return `<section><div class="sech">${hd}<button class="ib" data-r="rbx" data-k="${k}" aria-label="Quitar el recuadro ${esc(l)}" title="Quitar recuadro">×</button></div>${b}</section>`;
+  }).join('') + boxAdder(it);
   const oth = S.items.filter(x => x != it && !it.l.includes(x.id)).sort((a, b) => a.t.localeCompare(b.t));
   return `<input class="ti" data-k="t" value="${esc(it.t)}" placeholder="Nombre de la ${it.k == 'p' ? 'patología' : 'ficha'}" enterkeyhint="done">
   <div class="row2"><label class="f">${L1}<select data-sel="${G}"><option value="">${noneOf(it.k)}</option>${gs.map(g => `<option ${g == gv ? 'selected' : ''} value="${esc(g)}">${esc(groupLabel(it.k, g))}</option>`).join('')}</select></label>
@@ -250,7 +278,7 @@ function fichaEdit(it, seg) {
   <label class="f"><select data-add><option value="">+ Vincular ficha…</option>${oth.map(x => `<option value="${x.id}">${x.k == 'p' ? 'Patología' : 'Procedimiento'} · ${esc(x.t || 'Sin título')}</option>`).join('')}</select></label></section>
   <div class="acts" style="margin-top:28px"><button class="bt dan" data-r="del">${ic('trash', 'sm')} Eliminar ficha</button></div>`;
 }
-const isEmpty = it => !it.t.trim() && !Object.values(it.f).some(v => (v || '').trim()) && !it.c.length && !it.pr.length;
+const isEmpty = it => !it.t.trim() && !Object.values(it.f).some(v => plain(v).trim()) && !it.c.length && !it.pr.length;
 // Al salir de una ficha nueva que quedó vacía, se descarta para no dejar fichas fantasma.
 function leaveFicha(id) {
   const it = find(id);
@@ -294,8 +322,7 @@ function repQ() {
 function viewMas() {
   const row = (attr, i, t, s) => `<button class="row" ${attr}><span class="ic">${ic(i)}</span><span class="tx"><b>${t}</b><small>${esc(s)}</small></span><span class="chev">${ic('chev', 'sm')}</span></button>`;
   const st = sync.getStatus(), ui = getUI();
-  return `<div class="eyebrow">Herramientas</div><div class="list">${row('data-nav="#/mas/formulas"', 'calc', 'Fórmulas y calculadoras', 'Ácido-base, electrolitos, fluidos, fármacos…')}${row('data-nav="#/mas/estadisticas"', 'stats', 'Estadísticas quirúrgicas', 'Tu rendimiento como residente: procedimientos, rol, urgencias')}</div>
-  <div class="eyebrow">Organización</div><div class="list">${row('data-r="cls" data-k="p"', 'tree', 'Clasificación de patologías', 'Capítulos y temas')}${row('data-r="cls" data-k="q"', 'tree', 'Clasificación de procedimientos', 'Especialidades y subespecialidades')}</div>
+  return `<div class="eyebrow">Organización</div><div class="list">${row('data-r="cls" data-k="p"', 'tree', 'Clasificación de patologías', 'Capítulos y temas')}${row('data-r="cls" data-k="q"', 'tree', 'Clasificación de procedimientos', 'Especialidades y subespecialidades')}</div>
   <div class="eyebrow">App</div><div class="list">${row('data-sheet="look"', 'palette', 'Apariencia', SKINS[ui.skin].n + ' · ' + { auto: 'automático', light: 'claro', dark: 'oscuro' }[ui.mode])}${row('data-sheet="bk"', 'save', 'Respaldo y exportación', 'Descargar, restaurar, Excel')}${row('data-sheet="acct"', 'user', 'Cuenta y sincronización', st.email || STL[st.status])}</div>
   <p class="meta" style="text-align:center;margin-top:20px">Meditas · los datos de pacientes nunca salen del dispositivo</p>`;
 }
@@ -308,7 +335,7 @@ function render() {
   drawNav(r.sec); drawTop(r);
   const v = $('#view');
   v.innerHTML = r.v == 'hoy' ? viewHoy() : r.v == 'fichas' ? viewFichas(r) : r.v == 'ficha' ? viewFicha(r) : r.v == 'repaso' ? viewRepaso()
-    : r.v == 'evolucion' ? evo() : r.v == 'partes' ? viewPartes() : r.v == 'parte' ? viewParte(r.id) : r.v == 'mas' ? viewMas() : r.v == 'formulas' ? fmv() : r.v == 'estadisticas' ? viewStats() : viewHoy();
+    : r.v == 'evolucion' ? evo(r) : r.v == 'partes' ? viewPartes(r) : r.v == 'parte' ? viewParte(r.id) : r.v == 'mas' ? viewMas() : r.v == 'formulas' ? (r.mias ? fmv() : viewCalc(r)) : r.v == 'estadisticas' ? viewStats() : viewHoy();
   v.querySelectorAll('textarea[data-f],textarea[data-pi],textarea[data-pst],textarea[data-pf],textarea[data-ef]').forEach(grow);
   const fab = $('#fab');
   fab.hidden = r.v != 'fichas' || !!qs;
@@ -396,8 +423,33 @@ const R = {
       S.qb.push(...a); save(); render(); toast(a.length + ' pregunta(s) agregadas');
     } catch { $('#qm').textContent = ' Formato inválido.'; }
   },
-  ...EVR, ...FMR, ...PR, ...SR
+  rbx(b) {
+    const it = cur(), k = b.dataset.k, full = k == '_c' ? it.c.length : k == '_p' ? it.pr.length : plain(it.f[k]).trim();
+    if (full && !b.dataset.arm) { b.dataset.arm = 1; b.textContent = '¿Quitar?'; b.style.width = 'auto'; return; }
+    it.fx ??= {};
+    if (k[0] == 'x') { it.fx.x = (it.fx.x || []).filter(e => e.k != k); delete it.f[k]; }
+    else it.fx.hide = [...new Set([...(it.fx.hide || []), k])];
+    touch(it); save(); render();
+  },
+  rbadd(b) { const it = cur(); it.fx ??= {}; it.fx.hide = (it.fx.hide || []).filter(k => k != b.dataset.k); touch(it); save(); render(); },
+  rbnew() {
+    const it = cur(), n = ($('#rbn').value || '').trim(); if (!n) return toast('Escribí el título del recuadro');
+    it.fx ??= {}; (it.fx.x ??= []).push({ k: 'x' + uid().slice(-6), l: n }); touch(it); save(); render();
+  },
+  ...EVR, ...FMR, ...CR, ...PR, ...SR
 };
+
+/* ---------- texto enriquecido ---------- */
+function onRich(ed) { const it = cur(); if (!it) return; it.f[ed.dataset.rf] = sanitize(ed.innerHTML); touch(it); save(); }
+$('#view').addEventListener('mousedown', e => { if (e.target.closest('.rtb button')) e.preventDefault(); });
+$('#view').addEventListener('pointerdown', e => { if (e.target.closest('.rtb button')) e.preventDefault(); });
+document.addEventListener('selectionchange', () => { const a = document.activeElement; if (a && a.dataset && a.dataset.rf != null) saveSel(a); });
+$('#view').addEventListener('click', e => { const b = e.target.closest('.rtb button[data-rc]'); if (!b) return; const ed = b.closest('section').querySelector('[data-rf]'); if (exec(ed, b.dataset.rc)) onRich(ed); });
+$('#view').addEventListener('paste', e => {
+  const ed = e.target.closest && e.target.closest('[data-rf]'); if (!ed) return;
+  e.preventDefault(); const h = e.clipboardData.getData('text/html'), t = e.clipboardData.getData('text/plain');
+  document.execCommand('insertHTML', false, h ? sanitize(h) : esc(t).replace(/\n/g, '<br>')); onRich(ed);
+});
 
 /* ---------- eventos globales ---------- */
 document.addEventListener('click', e => {
@@ -416,8 +468,10 @@ $('#view').addEventListener('input', e => {
   const t = e.target, d = t.dataset;
   if (d.q != null) { qs = t.value; $('#fl').innerHTML = fichasList(parse()); $('#fab').hidden = !!qs; return; }
   if (d.fk) return fcalc(d.fk);
+  if (d.rf != null) return onRich(t);
+  if (d.rt != null) { const it = cur(), e = ((it.fx || {}).x || []).find(x => x.k == d.rt); if (e) { e.l = t.value; touch(it); save(); } return; }
   if (t.tagName == 'TEXTAREA' && (d.pst != null || d.pf != null || d.ef != null)) grow(t);
-  if (evoInput(e) || partesInput(e)) return;
+  if (evoInput(e) || partesInput(e) || calcInput(e)) return;
   const it = cur(); if (!it) return;
   if (d.f) it.f[d.f] = t.value;
   else if (d.k) it[d.k] = t.value;
@@ -429,6 +483,7 @@ $('#view').addEventListener('input', e => {
 });
 $('#view').addEventListener('change', e => {
   const t = e.target, d = t.dataset;
+  if (d.rs != null) { const ed = t.closest('section').querySelector('[data-rf]'); if (exec(ed, d.rs, t.value)) { onRich(ed); } t.value = ''; return; }
   if (d.cfg) { S.cfg[d.cfg] = d.cfg == 'n' ? +t.value : t.value; save(); return; }
   if (evoChange(e) || partesChange(e)) return;
   const it = cur(); if (!it) return;
@@ -596,9 +651,10 @@ setInterval(() => {
   }
 }, 30000);
 
-initEvo({ getS: () => S, save, render, toast, openEditor: (m, id) => openEditor(m, id) });
+initEvo({ getS: () => S, save, render, route: parse, toast, openEditor: (m, id) => openEditor(m, id) });
 initEvoEditor({ getS: () => S, save, toast, openSheet, close: () => closeSheet() });
-initPartes({ getS: () => S, save, render, toast, go, openSheet, close: () => closeSheet() });
+initCalc({ getS: () => S, save, render, route: parse });
+initPartes({ getS: () => S, save, render, route: parse, toast, go, openSheet, close: () => closeSheet() });
 initStats({ getS: () => S, save, render, toast });
 bindEvoEditor($('#bk')); bindPEditor($('#bk')); bindTips();
 initFormulas({ getS: () => S, save, render, toast, op, openSheet, close: () => closeSheet() });

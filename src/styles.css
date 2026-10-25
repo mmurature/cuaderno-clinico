@@ -380,3 +380,34 @@ label.ck input { width: 20px; height: 20px; accent-color: var(--pri); flex: none
 #nav button span:last-child { white-space: nowrap; }
 .kgrid .kt:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .chip.sm { white-space: nowrap; } .pstep textarea, .item textarea { overflow: hidden; resize: none; }
+
+/* ===== Fórmulas y Scores ===== */
+.nrow { display: flex; gap: 6px; align-items: center; } .nrow input { flex: 1; min-width: 0; } .nrow .un { width: auto; max-width: 42%; margin-top: 4px; min-height: 44px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); padding: 0 8px; }
+.un1 { font-weight: 400; } .ck3 { display: flex; align-items: center; gap: 10px; min-height: 44px; flex: 1 1 100%; } .ck3 input { width: 22px; height: 22px; margin: 0; }
+.f select { display: block; width: 100%; }
+.cres { border-left: 5px solid var(--line); } .cres .big { font-size: 30px; font-weight: 750; line-height: 1.15; margin: 4px 0; } .cres .big small { font-size: 15px; font-weight: 600; color: var(--mut); } .cres .int { font-weight: 600; margin-top: 4px; }
+.cres.lv-ok { border-left-color: var(--ok); } .cres.lv-warn { border-left-color: var(--warn); } .cres.lv-bad { border-left-color: var(--bad); }
+.mre { margin: 10px 0 0; display: grid; gap: 4px; } .mre div { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 4px; } .mre dt { color: var(--mut); font-size: 13px; } .mre dd { margin: 0; font-weight: 650; text-align: right; }
+pre.fx { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface-2); border-radius: var(--r-sm); padding: 10px 12px; font-size: 13px; margin: 4px 0 10px; font-family: inherit; }
+
+/* ===== Texto enriquecido ===== */
+.rtb { display: flex; gap: 4px; align-items: center; overflow-x: auto; padding: 4px; margin: 4px 0 0; background: var(--surface-2); border: 1px solid var(--line); border-bottom: 0; border-radius: var(--r-sm) var(--r-sm) 0 0; scrollbar-width: thin; }
+.rtb button, .rtb select { flex: none; min-width: 36px; min-height: 36px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 0 8px; font-size: 14px; }
+.rtb select { max-width: 108px; }
+.rte { min-height: 96px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 0 0 var(--r-sm) var(--r-sm); background: var(--surface); outline: none; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+.rte:focus { border-color: var(--pri); box-shadow: 0 0 0 3px var(--pri-soft); }
+.rte:empty::before { content: attr(data-ph); color: var(--mut); pointer-events: none; }
+.rte ul, .rte ol, .rd ul, .rd ol { margin: 6px 0; padding-left: 22px; } .rte p { margin: 0 0 6px; }
+.sech { display: flex; align-items: center; gap: 8px; justify-content: space-between; } .sech h4 { margin: 0; } .sech .ib { color: var(--mut); }
+.rtt { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; padding: 6px 8px; border: 1px dashed var(--line); border-radius: var(--r-sm); background: transparent; color: var(--ink); }
+.boxadd { margin-top: 20px; padding-top: 6px; border-top: 1px dashed var(--line); }
+
+/* ===== Navegación de 9 accesos: barra inferior desplazable en celular, barra lateral en pantallas anchas ===== */
+@media (max-width: 899.98px) {
+  #nav { justify-content: flex-start; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); }
+  #nav::-webkit-scrollbar { display: none; }
+  #nav button { flex: 0 0 auto; min-width: 74px; max-width: none; padding: 6px 4px 4px; scroll-snap-align: center; }
+  #nav button .pill { width: 48px; }
+  #nav button span:last-child { font-size: 10.5px; }
+}
+@media (min-width: 900px) { #nav { overflow-y: auto; } }

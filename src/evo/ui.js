@@ -44,14 +44,16 @@ export const evoText = () => { const T = runT(); return T ? compose(T, opts()) :
 /* =========================================================================
    Vistas
    ========================================================================= */
-export function evo() {
+export function evo(r = {}) {
   const e = E();
-  if (!e.open || !runT()) return evoList();
+  if (!e.open || !runT()) return evoList(r);
   return evoRun();
 }
 
 let q = '';
-function evoList() {
+let lk = '';
+function evoList(r = {}) {
+  if (location.hash != lk) { q = ''; lk = location.hash; }
   const C = cats(), hid = new Set(S().evx.hid || []), ql = q.toLowerCase();
   const hist = (S().evh || []).slice(-5).reverse();
   const row = id => { const t = tpl(id); if (!t || hid.has(id)) return ''; if (ql && !(t.n + ' ' + (t.d || '')).toLowerCase().includes(ql)) return ''; return `<button class="row" data-r="evt" data-v="${esc(id)}"><span class="tx"><b>${esc(t.n)}${S().evt && S().evt[id] ? ' <span class="tag">editada</span>' : ''}</b>${t.d ? `<small>${esc(t.d)}</small>` : ''}</span><span class="chev">${ic('chev', 'sm')}</span></button>`; };
@@ -59,7 +61,9 @@ function evoList() {
   return `${cur(E())}<p class="meta" style="margin:4px 2px 10px">Elegí una plantilla. Marcás lo normal, lo alterado o lo no evaluable y la app redacta la evolución. Lo que no tocás no se escribe.</p>
   <div class="srw">${ic('search', 'sm')}<input class="sr" data-evq type="search" placeholder="Buscar plantilla…" value="${esc(q)}" autocomplete="off"></div>
   <div class="tools"><button class="ib txt" data-r="evcls">${ic('tree', 'sm')} Editar clasificación</button><button class="ib txt" data-r="evnew">${ic('plus', 'sm')} Plantilla nueva</button></div>
-  ${C.map(c => { const rows = c.t.map(row).join(''); return rows ? `<div class="eyebrow">${esc(c.n)}</div><div class="list">${rows}</div>` : ''; }).join('')}
+  ${ql ? `<div class="list">${C.map(c => c.t.map(row).join('')).join('') || '<div class="empty"><p>Nada coincide.</p></div>'}</div>`
+    : r.cat != null ? `<div class="list">${(C.find(c => c.n == r.cat) || { t: [] }).t.map(row).join('')}</div>`
+    : `<div class="eyebrow">Categorías</div><div class="list">${C.map(c => { const n = c.t.filter(id => tpl(id) && !hid.has(id)).length; return n ? `<button class="row" data-nav="#/evolucion/${encodeURIComponent(c.n)}"><span class="tx"><b>${esc(c.n)}</b><small>${n} plantilla${n == 1 ? '' : 's'}</small></span><span class="chev">${ic('chev', 'sm')}</span></button>` : ''; }).join('')}</div>`}
   ${hist.length ? `<div class="eyebrow">Evaluaciones guardadas</div><div class="list">${hist.map(h => `<button class="row" data-r="evfromh" data-v="${h.id}"><span class="tx"><b>${esc((tpl(h.tid) || {}).n || 'Plantilla eliminada')}${h.tag ? ' · ' + esc(h.tag) : ''}</b><small>${new Date(h.at).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })} · tocá para evolucionar desde esta</small></span><span class="chev">${ic('chev', 'sm')}</span></button>`).join('')}</div>` : ''}`;
 }
 
@@ -306,7 +310,7 @@ export const EVR = {
 // Campos de texto y selects (delegados desde la vista)
 export function evoInput(e) {
   const t = e.target, d = t.dataset;
-  if (d.evq != null) { q = t.value; const v = $('#view'); v.innerHTML = evo(); const i = v.querySelector('[data-evq]'); i.focus(); i.setSelectionRange(q.length, q.length); return true; }
+  if (d.evq != null) { q = t.value; const v = $('#view'); v.innerHTML = evo(ctx.route()); const i = v.querySelector('[data-evq]'); i.focus(); i.setSelectionRange(q.length, q.length); return true; }
   if (d.evtxt != null) { E().txt = t.value; save(); return true; }
   if (d.ef == null || t.tagName == 'SELECT') return false;
   const x = X(), cur = x[d.ef] || {}; setP(cur, d.ep, t.value); if (cur.s == 'ne' && d.ep != 'd') delete cur.s; x[d.ef] = cur; E().txt = null; save();

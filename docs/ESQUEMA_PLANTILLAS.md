@@ -167,3 +167,31 @@ el usuario confirma, edita, reordena, agrega o quita. En el parte se escriben so
 - Un paso puede citar un campo con `{idDelCampo}`: «Se secciona la base apendicular con {base}». Si ese campo no se completa,
   el paso queda marcado como incompleto.
 - Sin punto final.
+
+### 2.4 Catálogo por categorías, variantes y modo rápido (versión 2)
+
+Propiedades nuevas de la plantilla:
+
+| Propiedad | Uso |
+|---|---|
+| `cat` | categoría del catálogo, exactamente como figura en la lista de la especialidad (p. ej. `'Cirugía abdominal y digestiva'`) |
+| `syn` | sinónimos y abreviaturas para el buscador: `['apendicectomía videolaparoscópica', 'VLP', 'apéndice']` |
+| `ref` | fuentes usadas para armar la plantilla (técnica y campos) |
+| `rev` | fecha de revisión de la plantilla, `'2026-10'` |
+| `alias` / `set` | entrada del catálogo que reutiliza otra plantilla con una variante preseleccionada: `{ id: 'cg-hing-tep', n: 'Hernioplastia inguinal laparoscópica TEP', cat: '…', syn: [...], alias: 'cg-hing', set: { via: 'TEP' } }`. Una entrada alias no lleva `f` ni `pasos`. |
+
+Propiedades nuevas de los campos:
+
+| Propiedad | Uso |
+|---|---|
+| `vr: 1` | campo de **variante** (técnica, lado, nivel, localización, primaria/revisión): se pregunta en el paso «Variante», antes del formulario |
+| `q: 1` | campo esencial: aparece también en el **parte rápido**. En el parte detallado aparecen todos. Los `req` siempre aparecen. |
+| `if` | `['campo', 'valor']` o `['campo', ['valor1', 'valor2']]` (cualquiera de los valores). En `opt` el valor es la etiqueta de la opción; en `yn`, `'si'`/`'no'`. |
+| `ifn` | igual que `if` pero negado: el campo se muestra si el otro **no** tiene ese valor |
+
+Pasos condicionados a la variante: un paso puede ser un string o `{ t: 'Se realiza …', if: ['via', 'TAPP'] }`
+(también `ifn`). Al confirmar la variante se arma la lista de pasos que corresponde.
+
+Campos comunes nuevos (los provee el motor): `prog` procedimiento programado (si difiere del realizado), `indic` indicación quirúrgica,
+`sangr` pérdida sanguínea estimada (mL), `fluid` fluidos administrados, `resp` profesional responsable, `matric` matrícula, `estid` estructuras identificadas y preservadas (sección C).
+Usar campos específicos para «estructuras anatómicas identificadas y preservadas» (sección C o D) cuando la técnica lo requiere.

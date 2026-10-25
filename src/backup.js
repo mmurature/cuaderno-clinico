@@ -1,4 +1,5 @@
 // Respaldo y exportación a archivos: JSON completo (restaurable) y CSV (para Excel).
+import { plain } from './rich.js';
 import { fieldsOf, ST, today, def, migrateV1, isValidState } from './data.js';
 
 export function download(name, text, type) {
@@ -36,7 +37,7 @@ export function exportFichasCSV(S, k) {
   const head = ['Nombre', k == 'q' ? 'Especialidad' : 'Capítulo', k == 'q' ? 'Subespecialidad' : 'Tema', 'Estado', 'Última revisión', 'Próximo repaso', ...keys.values()];
   if (k == 'q') head.push('Checklist', 'Preferencias por médico');
   const rows = its.map(i => {
-    const r = [i.t, k == 'q' ? i.e : i.g, i.s, ST[i.st], i.ra || '', i.nx, ...[...keys.keys()].map(f => i.f[f] || '')];
+    const r = [i.t, k == 'q' ? i.e : i.g, i.s, ST[i.st], i.ra || '', i.nx, ...[...keys.keys()].map(f => plain(i.f[f]))];
     if (k == 'q') r.push(i.c.map(c => (c.d ? '[x] ' : '[ ] ') + c.t).join('\n'), i.pr.map(p => p.m + ': ' + p.t).join('\n'));
     return r;
   });
